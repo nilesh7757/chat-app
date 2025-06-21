@@ -7,6 +7,17 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET!,
 });
 
+interface CloudinaryUploadResult {
+  secure_url: string;
+  public_id: string;
+  format: string;
+  width: number;
+  height: number;
+  resource_type: string;
+  created_at: string;
+  bytes: number;
+}
+
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
@@ -22,10 +33,10 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
 
     // Upload to Cloudinary
-    const uploadRes = await new Promise<any>((resolve, reject) => {
+    const uploadRes = await new Promise<CloudinaryUploadResult>((resolve, reject) => {
       cloudinary.uploader.upload_stream({ resource_type: 'auto' }, (err, result) => {
         if (err) reject(err);
-        else resolve(result);
+        else resolve(result as CloudinaryUploadResult);
       }).end(buffer);
     });
 

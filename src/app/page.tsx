@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function Home() {
   return (
@@ -102,7 +101,7 @@ export default function Home() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Profile Pictures</h3>
             <p className="text-gray-600">
-              Upload and share your profile picture. See your contacts' photos too!
+              Upload and share your profile picture. See your contacts&apos; photos too!
             </p>
           </div>
 

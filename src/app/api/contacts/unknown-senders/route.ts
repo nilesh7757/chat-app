@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectDB } from '@/lib/mongodb';
@@ -17,48 +17,49 @@ interface UnknownSender extends Contact {
   lastMessageTime: Date;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const userEmail = session.user.email;
     await connectDB();
-    const currentUser = await User.findOne({ email: session.user.email });
+    const currentUser = await User.findOne({ email: userEmail });
     if (!currentUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Find all messages where the user is a participant
     const messages = await Message.find({
-      roomId: { $regex: session.user.email }
+      roomId: { $regex: userEmail }
     }).sort({ createdAt: 1 });
 
     // Find all other participants (senders or recipients)
     const otherEmails = new Set<string>();
     messages.forEach(msg => {
       const [email1, email2] = msg.roomId.split('+');
-      if (email1 === session.user.email) {
+      if (email1 === userEmail) {
         otherEmails.add(email2);
-      } else if (email2 === session.user.email) {
+      } else if (email2 === userEmail) {
         otherEmails.add(email1);
       }
     });
 
     // Remove self
-    otherEmails.delete(session.user.email);
+    otherEmails.delete(userEmail);
 
     // Remove contacts
     const contactEmails = currentUser.contacts?.map((contact: Contact) => contact.email) || [];
-    contactEmails.forEach(email => otherEmails.delete(email));
+    contactEmails.forEach((email: string) => otherEmails.delete(email));
 
     // For each unknown sender, get their details and last message
     const unknownSendersWithDetails: UnknownSender[] = [];
     for (const email of otherEmails) {
       const senderUser = await User.findOne({ email }).select('name email image');
       // Find the last message in this room
-      const roomId = [session.user.email, email].sort().join('+');
+      const roomId = [userEmail, email].sort().join('+');
       const lastMsg = await Message.findOne({ roomId }).sort({ createdAt: -1 });
       unknownSendersWithDetails.push({
         email,

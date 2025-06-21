@@ -4,6 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 
+interface Contact {
+  email: string;
+  name: string;
+  image?: string | null;
+  found: boolean;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -28,7 +35,7 @@ export async function POST(req: NextRequest) {
     const contactUser = await User.findOne({ email: contactEmail }).select('name email image');
     
     // Prepare contact data
-    const contactData = {
+    const contactData: Contact = {
       email: contactEmail,
       name: contactUser?.name || contactEmail.split('@')[0],
       image: contactUser?.image || null,
@@ -42,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     // Check if contact already exists
     const contactExists = currentUser.contacts.some(
-      (contact: any) => contact.email === contactEmail
+      (contact: Contact) => contact.email === contactEmail
     );
 
     if (!contactExists) {

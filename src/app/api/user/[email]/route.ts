@@ -4,21 +4,22 @@ import { User } from "@/models/User";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { email: string } }
+  { params }: { params: Promise<{ email: string }> }
 ) {
   try {
     await connectDB();
     
     // Decode the email from the URL parameter
-    const email = decodeURIComponent(params.email);
+    const { email } = await params;
+    const decodedEmail = decodeURIComponent(email);
     
-    const user = await User.findOne({ email }).select('name email image');
+    const user = await User.findOne({ email: decodedEmail }).select('name email image');
     
     if (!user) {
       return NextResponse.json({ 
         found: false, 
-        email: email,
-        name: email.split('@')[0], // Use email prefix as name
+        email: decodedEmail,
+        name: decodedEmail.split('@')[0], // Use email prefix as name
         image: null 
       });
     }

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const email = session.user.email;
     const messages = await Message.find({ roomId: { $regex: email } }).sort({ createdAt: 1 });
     return NextResponse.json({ messages });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 } 

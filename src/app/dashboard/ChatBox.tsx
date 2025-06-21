@@ -61,17 +61,25 @@ export default function ChatBox({
   const fetchContactDetails = async (email: string): Promise<Contact> => {
     try {
       const response = await fetch(`/api/user/${encodeURIComponent(email)}`);
-      const data = await response.json();
-      return data;
+      if (response.ok) {
+        const userData = await response.json();
+        return {
+          email: userData.email,
+          name: userData.name || email.split('@')[0],
+          image: userData.image,
+          found: true
+        };
+      }
     } catch (error) {
       console.error('Error fetching contact details:', error);
-      return {
-        email: email,
-        name: email.split('@')[0],
-        image: null,
-        found: false
-      };
     }
+    
+    return {
+      email,
+      name: email.split('@')[0],
+      image: null,
+      found: false
+    };
   };
 
   const addContactToList = async (email: string) => {
@@ -162,7 +170,7 @@ export default function ChatBox({
         socketRef.current.close();
       }
     };
-  }, [targetEmail]);
+  }, [targetEmail, onRefreshContacts, onUnknownMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -183,7 +191,7 @@ export default function ChatBox({
       if (data.url) {
         sendMessage('', { url: data.url, name: file.name, type: file.type });
       }
-    } catch (err) {
+    } catch {
       alert('File upload failed');
     } finally {
       e.target.value = '';
@@ -193,7 +201,7 @@ export default function ChatBox({
   // Modified sendMessage to support file
   const sendMessage = (text?: string, fileObj?: { url: string; name: string; type: string }) => {
     if ((!text || !text.trim()) && !fileObj) return;
-    let msgObj: ChatMessage = {
+    const msgObj: ChatMessage = {
       from: selfEmailRef.current || 'You',
       text: text?.trim() || '',
     };
@@ -202,7 +210,7 @@ export default function ChatBox({
     }
     setMessages(prev => [...prev, msgObj]);
     // Only include file if present
-    const wsMsg: any = { type: 'chat', text: msgObj.text };
+    const wsMsg: { type: string; text: string; file?: { url: string; name: string; type: string } } = { type: 'chat', text: msgObj.text };
     if (msgObj.file) wsMsg.file = msgObj.file;
     socketRef.current?.send(JSON.stringify(wsMsg));
     setMessage('');

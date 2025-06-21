@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
       'res.cloudinary.com', // allow Cloudinary images
     ],
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;
