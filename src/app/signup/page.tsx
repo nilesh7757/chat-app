@@ -15,20 +15,41 @@ export default function SignUpPage() {
     }
     
     setIsLoading(true);
-    const res = await fetch("/api/signup", {
-      method: "POST",
-      body: JSON.stringify(form),
-      headers: { "Content-Type": "application/json" },
-    });
+    
+    try {
+      // First, create the account
+      const signupRes = await fetch("/api/signup", {
+        method: "POST",
+        body: JSON.stringify(form),
+        headers: { "Content-Type": "application/json" },
+      });
 
-    setIsLoading(false);
-    if (res.ok) {
-      alert("Account created successfully! Please sign in.");
-      router.push("/signin");
-      router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
-    } else {
-      const data = await res.json();
-      alert("Signup failed: " + data.error);
+      if (!signupRes.ok) {
+        const data = await signupRes.json();
+        alert("Signup failed: " + data.error);
+        return;
+      }
+
+      // Then, send OTP
+      const otpRes = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email }),
+      });
+
+      if (otpRes.ok) {
+        alert("Account created successfully! Please check your email for OTP.");
+        router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
+      } else {
+        const data = await otpRes.json();
+        alert("Account created but OTP sending failed: " + data.error);
+        router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
+      }
+    } catch (error) {
+      console.error('Signup error:', error);
+      alert("Signup failed. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -28,19 +28,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
+    // Validate file size (10MB limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      return NextResponse.json({ error: 'File size must be less than 10MB' }, { status: 400 });
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/plain', 'text/csv'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json({ 
+        error: 'File type not supported. Please upload images, PDFs, documents, or text files.' 
+      }, { status: 400 });
+    }
+
     // Read file buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // Determine resource type based on file type
+    const resourceType = file.type.startsWith('image/') ? 'image' : 'raw';
+
     // Upload to Cloudinary
     const uploadRes = await new Promise<CloudinaryUploadResult>((resolve, reject) => {
-      cloudinary.uploader.upload_stream({ resource_type: 'auto' }, (err, result) => {
+      cloudinary.uploader.upload_stream({ 
+        resource_type: resourceType,
+        folder: 'chat-files'
+      }, (err, result) => {
         if (err) reject(err);
         else resolve(result as CloudinaryUploadResult);
       }).end(buffer);
     });
 
-    return NextResponse.json({ url: uploadRes.secure_url });
+    return NextResponse.json({ 
+      url: uploadRes.secure_url,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size
+    });
   } catch (error) {
     console.error('File upload error:', error);
     return NextResponse.json({ error: 'File upload failed' }, { status: 500 });
