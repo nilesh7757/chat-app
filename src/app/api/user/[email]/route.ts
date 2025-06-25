@@ -14,7 +14,7 @@ export async function GET(
     // Decode the email from the URL parameter
     const decodedEmail = decodeURIComponent(params.email);
     
-    const user = await User.findOne({ email: decodedEmail }).select('name email image bio');
+    const user = await User.findOne({ email: decodedEmail }).select('name email image bio isOnline lastSeen');
     
     if (!user) {
       return NextResponse.json({ 
@@ -30,7 +30,9 @@ export async function GET(
       email: user.email,
       name: user.name,
       image: user.image,
-      bio: user.bio
+      bio: user.bio,
+      isOnline: user.isOnline,
+      lastSeen: user.lastSeen
     });
     
   } catch (error) {

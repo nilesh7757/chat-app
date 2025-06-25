@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { toast } from 'react-toastify';
 
 export default function SignUpPage() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
@@ -51,12 +52,11 @@ export default function SignUpPage() {
 
       if (otpRes.ok) {
         console.log('✅ OTP sent successfully');
-        alert("Account created successfully! Please check your email for OTP verification.");
+        toast.success("Account created successfully! Please check your email for OTP verification.");
         router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
       } else {
         console.warn('⚠️ Account created but OTP sending failed:', otpData.error);
-        // Still redirect to verification page, user can resend OTP
-        alert(`Account created! ${otpData.error || 'Please check your email or resend OTP on the next page.'}`);
+        toast.warn(`Account created! ${otpData.error || 'Please check your email or resend OTP on the next page.'}`);
         router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
       }
     } catch (error: any) {

@@ -17,6 +17,8 @@ const userSchema = new mongoose.Schema({
   otp: String,
   otpExpiry: Date,
   bio: { type: String, maxlength: 200 },
+  isOnline: { type: Boolean, default: false }, // online status
+  lastSeen: { type: Date }, // last seen timestamp
 }, { timestamps: true });
 
 export const User = mongoose.models.User || mongoose.model("User", userSchema);

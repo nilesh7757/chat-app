@@ -8,12 +8,16 @@ import axios from "axios"
 import UserInfoBox from './UserInfoBox'
 import { Image as ImageIcon, FileText, FileType2, FileSpreadsheet, Presentation, FileArchive, File, X, Paperclip } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { toast } from 'react-toastify'
 
 interface ChatContact {
   email: string
   name: string
   image: string | null
   bio?: string
+  isOnline?: boolean
+  lastSeen?: string | Date
+  found: boolean
 }
 
 interface Contact {
@@ -64,6 +68,8 @@ export default function ChatBox({
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [pendingFilePreview, setPendingFilePreview] = useState<string | null>(null)
   const [deletingMessageIds, setDeletingMessageIds] = useState<string[]>([])
+  const [longPressedMsgId, setLongPressedMsgId] = useState<string | null>(null)
+  const longPressTimeout = useRef<NodeJS.Timeout | null>(null)
 
   const getInitials = (name: string) => {
     return name
@@ -100,16 +106,18 @@ export default function ChatBox({
     return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
-  const fetchContactDetails = async (email: string): Promise<Contact & { bio?: string }> => {
+  const fetchContactDetails = async (email: string): Promise<ChatContact> => {
     try {
       const response = await axios.get(`/api/user/${encodeURIComponent(email)}`)
-      const userData = response.data as { email: string; name?: string; image: string | null; bio?: string }
+      const userData = response.data as { email: string; name?: string; image: string | null; bio?: string; isOnline?: boolean; lastSeen?: string | Date; found?: boolean }
       return {
         email: userData.email,
         name: userData.name || email.split("@")[0],
         image: userData.image,
-        found: true,
         bio: userData.bio || '',
+        isOnline: userData.isOnline,
+        lastSeen: userData.lastSeen,
+        found: userData.found !== undefined ? userData.found : true,
       }
     } catch (error) {
       console.error("Error fetching contact details:", error)
@@ -117,8 +125,10 @@ export default function ChatBox({
         email,
         name: email.split("@")[0],
         image: null,
-        found: false,
         bio: '',
+        isOnline: false,
+        lastSeen: undefined,
+        found: false,
       }
     }
   }
@@ -142,6 +152,11 @@ export default function ChatBox({
   }
 
   useEffect(() => {
+    let interval: NodeJS.Timeout;
+    const fetchAndSetContact = () => fetchContactDetails(targetEmail).then(setContact);
+    fetchAndSetContact();
+    interval = setInterval(fetchAndSetContact, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
     fetchContactDetails(targetEmail).then(setContact)
   }, [targetEmail])
 
@@ -272,7 +287,7 @@ export default function ChatBox({
     try {
       const session = await getSession()
       if (!session?.user?.email) return
-      const res = await axios.patch("http://localhost:3001/messages/" + msgId, {
+      const res = await axios.patch(`${process.env.NEXT_PUBLIC_WS_URL}/messages/` + msgId, {
         email: session.user.email,
         text: editingText.trim(),
       })
@@ -281,7 +296,7 @@ export default function ChatBox({
       setEditingId(null)
       setEditingText("")
     } catch (err) {
-      alert("Failed to edit message")
+      toast.error("Failed to edit message")
       console.error(err)
     }
   }
@@ -295,7 +310,7 @@ export default function ChatBox({
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 10 * 1024 * 1024) {
-      alert("File size must be less than 10MB")
+      toast.error("File size must be less than 10MB")
       e.target.value = ""
       return
     }
@@ -315,13 +330,13 @@ export default function ChatBox({
       await new Promise((resolve) => setTimeout(resolve, 300)) // Wait for animation
       const session = await getSession()
       if (!session?.user?.email) return
-      await axios.delete("http://localhost:3001/messages/" + msgId, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_WS_URL}/messages/` + msgId, {
         headers: { "Content-Type": "application/json" },
         data: { email: session.user.email },
       } as any)
       setMessages((prev) => prev.filter((m: any) => m._id !== msgId))
     } catch (err) {
-      alert("Failed to delete message")
+      toast.error("Failed to delete message")
       console.error(err)
     } finally {
       setDeletingMessageIds((prev) => prev.filter((id) => id !== msgId))
@@ -388,7 +403,7 @@ export default function ChatBox({
       }
     } catch (error) {
       console.error("❌ Download failed:", error)
-      alert("Download failed. Please try again or contact support.")
+      toast.error("Download failed. Please try again or contact support.")
     }
   }
 
@@ -454,10 +469,10 @@ export default function ChatBox({
             size: data.fileSize || pendingFile.size,
           })
         } else {
-          alert("File upload failed: " + (data.error || "Unknown error"))
+          toast.error("File upload failed: " + (data.error || "Unknown error"))
         }
       } catch (error) {
-        alert("File upload failed. Please try again.")
+        toast.error("File upload failed. Please try again.")
         console.error(error)
       } finally {
         setIsUploadingFile(false)
@@ -490,6 +505,34 @@ export default function ChatBox({
     setPendingFilePreview(null)
   }
 
+  // Helper for long press
+  const handleTouchStart = (msgId: string) => {
+    if (window.innerWidth >= 768) return; // Only for mobile
+    longPressTimeout.current = setTimeout(() => {
+      setLongPressedMsgId(msgId);
+    }, 500); // 500ms for long press
+  };
+  const handleTouchEnd = () => {
+    if (longPressTimeout.current) {
+      clearTimeout(longPressTimeout.current);
+      longPressTimeout.current = null;
+    }
+  };
+  const handleOverlayClose = () => setLongPressedMsgId(null);
+
+  function formatLastSeen(lastSeen: string | Date | undefined) {
+    if (!lastSeen) return ''
+    const date = typeof lastSeen === 'string' ? new Date(lastSeen) : lastSeen
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    if (diffMins < 1) return 'just now'
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+    return date.toLocaleString()
+  }
+
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
@@ -512,6 +555,14 @@ export default function ChatBox({
         <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => setUserInfoOpen(true)}>
           <p className="text-lg font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">{contact?.name || targetEmail}</p>
           <p className="text-sm text-gray-500 truncate group-hover:text-blue-500 transition-colors">{targetEmail}</p>
+          <p className="text-xs mt-1">
+            {contact?.isOnline
+              ? <span className="text-green-600 font-medium">Online</span>
+              : contact?.lastSeen
+                ? <span className="text-gray-400">Last seen {formatLastSeen(contact.lastSeen)}</span>
+                : <span className="text-gray-400">Offline</span>
+            }
+          </p>
         </div>
       </div>
 
@@ -537,6 +588,7 @@ export default function ChatBox({
               const fileType = (msg as any).fileType || (typeof msg.file === "object" ? msg.file?.type : undefined) || ""
               const fileSize = (msg as any).fileSize || (typeof msg.file === "object" ? msg.file?.size : undefined) || 0
               const downloadFileName = getProperFileName(fileName, fileType)
+              const isLongPressed = longPressedMsgId === (msg as any)._id
               return (
                 <div
                   key={i}
@@ -548,25 +600,59 @@ export default function ChatBox({
                         ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white ml-auto"
                         : "bg-white text-gray-900 border border-gray-100 mr-auto"
                     } ${isDeleting ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100"}`}
+                    onTouchStart={isOwnMessage ? () => handleTouchStart((msg as any)._id) : undefined}
+                    onTouchEnd={isOwnMessage ? handleTouchEnd : undefined}
                   >
-                    {/* Edit/Delete buttons */}
+                    {/* Edit/Delete buttons for desktop */}
                     {isOwnMessage && (
-                      <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                      <div className="hidden md:flex absolute -top-2 -right-2 space-x-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <button
-                          className="w-7 h-7 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                          className="w-5 h-5 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center shadow transition-all p-0 md:hover:scale-125 md:hover:shadow-lg md:focus:scale-110 md:focus:shadow-lg"
                           title="Edit"
                           onClick={() => handleEditClick((msg as any)._id, msg.text)}
                           disabled={!!msg.file}
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm-6 6h6v-6H3v6z" /></svg>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm-6 6h6v-6H3v6z" /></svg>
                         </button>
                         <button
-                          className="w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                          className="w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition-all p-0 md:hover:scale-125 md:hover:shadow-lg md:focus:scale-110 md:focus:shadow-lg"
                           title="Delete"
                           onClick={() => handleDeleteMessage((msg as any)._id)}
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
                         </button>
+                      </div>
+                    )}
+                    {/* Long press overlay for mobile */}
+                    {isOwnMessage && isLongPressed && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" onClick={handleOverlayClose}>
+                        <div className="flex flex-col space-y-4 bg-white rounded-2xl p-8 shadow-xl max-w-xs w-full items-center" onClick={e => e.stopPropagation()}>
+                          <button
+                            className="w-full py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 focus:outline-none"
+                            onClick={() => {
+                              handleEditClick((msg as any)._id, msg.text);
+                              setLongPressedMsgId(null);
+                            }}
+                            disabled={!!msg.file}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="w-full py-3 bg-red-600 text-white rounded-lg text-lg font-semibold hover:bg-red-700 focus:outline-none"
+                            onClick={() => {
+                              handleDeleteMessage((msg as any)._id);
+                              setLongPressedMsgId(null);
+                            }}
+                          >
+                            Delete
+                          </button>
+                          <button
+                            className="w-full py-2 mt-2 bg-gray-200 text-gray-700 rounded-lg text-base font-medium hover:bg-gray-300 focus:outline-none"
+                            onClick={handleOverlayClose}
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
                     )}
                     {/* Message content */}
@@ -660,7 +746,7 @@ export default function ChatBox({
       </div>
 
       {/* Input Area */}
-      <div className="bg-white/90 backdrop-blur border-t border-white/30 shadow-lg px-6 py-4 sticky bottom-0 z-10">
+      <div className="bg-white/90 backdrop-blur border-t border-white/30 shadow-lg px-6 py-4 sticky bottom-0 z-40">
         <div className="flex items-end gap-3">
           <button
             type="button"

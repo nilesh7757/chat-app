@@ -1,6 +1,7 @@
 'use client';
 import { useState } from "react";
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 export default function DeleteProfileButton() {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -16,14 +17,14 @@ export default function DeleteProfileButton() {
       const res = await axios.delete("/api/delete-profile");
 
       if (res.status === 200) {
-        alert("Profile photo deleted successfully!");
+        toast.success("Profile photo deleted successfully!");
         window.location.reload(); // Refresh to show default avatar
       } else {
         const data = res.data as { error?: string };
-        alert("Delete failed: " + (data.error || "Unknown error"));
+        toast.error("Delete failed: " + (data.error || "Unknown error"));
       }
     } catch {
-      alert("Delete failed: Network error");
+      toast.error("Delete failed: Network error");
     } finally {
       setIsDeleting(false);
     }

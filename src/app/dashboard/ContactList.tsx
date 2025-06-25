@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 interface Contact {
   email: string;
@@ -87,9 +88,8 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
 
       if (response.status !== 200) {
         console.error('Failed to save contact to database');
-        // Remove from local state if database save failed
         setContacts(prev => prev.filter(contact => contact.email !== email));
-        alert('Failed to add contact. Please try again.');
+        toast.error('Failed to add contact. Please try again.');
         return;
       }
       
@@ -100,7 +100,7 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
       setEmail('');
     } catch (error) {
       console.error('Error adding contact:', error);
-      alert('Failed to add contact. Please try again.');
+      toast.error('Failed to add contact. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -127,13 +127,13 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
           console.error('Failed to save contact to database');
           // Remove from local state if database save failed
           setContacts(prev => prev.filter(contact => contact.email !== contactEmail));
-          alert('Failed to add contact. Please try again.');
+          toast.error('Failed to add contact. Please try again.');
           setIsAddingContact(false);
           return;
         }
       } catch (error) {
         console.error('Error adding contact:', error);
-        alert('Failed to add contact. Please try again.');
+        toast.error('Failed to add contact. Please try again.');
         setIsAddingContact(false);
         return;
       } finally {
@@ -171,11 +171,11 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
         }
       } else {
         const data = response.data as { error?: string };
-        alert('Failed to delete contact: ' + (data.error || 'Unknown error'));
+        toast.error('Failed to delete contact: ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error deleting contact:', error);
-      alert('Failed to delete contact: Network error');
+      toast.error('Failed to delete contact: Network error');
     }
   };
 
@@ -356,7 +356,7 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
                   {/* Delete Button */}
                   <button
                     onClick={(e) => deleteContact(contact.email, e)}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200"
+                    className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200 md:hover:scale-125 md:hover:shadow-lg md:focus:scale-110 md:focus:shadow-lg"
                     title="Delete contact"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

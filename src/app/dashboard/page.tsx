@@ -156,7 +156,7 @@ export default function Page() {
 
       {/* Hamburger button for mobile */}
       <Button
-        className="absolute top-4 left-4 z-50 md:hidden p-2 rounded-full bg-white shadow-lg border border-gray-200 focus:outline-none"
+        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-full bg-white shadow-lg border border-gray-200 focus:outline-none"
         onClick={() => setSidebarOpen(true)}
         aria-label="Open contacts sidebar"
         type="button"

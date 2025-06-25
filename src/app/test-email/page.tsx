@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 export default function TestEmailPage() {
   const [email, setEmail] = useState('');
@@ -12,7 +13,7 @@ export default function TestEmailPage() {
 
   const handleTestEmail = async () => {
     if (!email) {
-      alert('Please enter an email address');
+      toast.error('Please enter an email address');
       return;
     }
 
@@ -28,12 +29,12 @@ export default function TestEmailPage() {
       } else {
         setStatus('error');
         setErrorDetails(data.details || data.error || 'Unknown error');
-        alert(data.error || 'Failed to send test email');
+        toast.error(data.error || 'Failed to send test email');
       }
     } catch (error: any) {
       setStatus('error');
       setErrorDetails('Network error or server not responding');
-      alert('Failed to send test email');
+      toast.error('Failed to send test email');
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from 'react-toastify';
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
@@ -11,7 +12,7 @@ export default function SignInPage() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      alert("Please fill in all fields");
+      toast.error("Please fill in all fields");
       return;
     }
     setIsLoading(true);
@@ -24,12 +25,12 @@ export default function SignInPage() {
       if (res?.ok) {
         router.push("/dashboard");
       } else if (res?.error) {
-        alert(res.error || "Invalid credentials");
+        toast.error(res.error || "Invalid credentials");
       } else {
-        alert("Invalid credentials");
+        toast.error("Invalid credentials");
       }
     } catch (error) {
-      alert("An error occurred during sign in");
+      toast.error("An error occurred during sign in");
     } finally {
       setIsLoading(false);
     }
@@ -45,12 +46,12 @@ export default function SignInPage() {
       if (res?.ok) {
         router.push("/dashboard");
       } else if (res?.error) {
-        alert(res.error || "Google sign in failed");
+        toast.error(res.error || "Google sign in failed");
       } else {
-        alert("Google sign in failed");
+        toast.error("Google sign in failed");
       }
     } catch (error) {
-      alert("An error occurred during Google sign in");
+      toast.error("An error occurred during Google sign in");
     } finally {
       setIsLoading(false);
     }
