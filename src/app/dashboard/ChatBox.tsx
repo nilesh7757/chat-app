@@ -262,22 +262,33 @@ export default function ChatBox({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleEditMessage = async (msgId: string, oldText: string) => {
-    const newText = prompt("Edit your message:", oldText)
-    if (!newText || newText.trim() === oldText) return
+  const handleEditClick = (msgId: string, oldText: string) => {
+    setEditingId(msgId)
+    setEditingText(oldText)
+  }
+
+  const handleEditSave = async (msgId: string) => {
+    if (!editingText.trim()) return
     try {
       const session = await getSession()
       if (!session?.user?.email) return
       const res = await axios.patch("http://localhost:3001/messages/" + msgId, {
         email: session.user.email,
-        text: newText.trim(),
+        text: editingText.trim(),
       })
       const data = res.data as { data: { text: string } }
       setMessages((prev) => prev.map((m: any) => (m._id === msgId ? { ...m, text: data.data.text } : m)))
+      setEditingId(null)
+      setEditingText("")
     } catch (err) {
       alert("Failed to edit message")
       console.error(err)
     }
+  }
+
+  const handleEditCancel = () => {
+    setEditingId(null)
+    setEditingText("")
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -480,157 +491,166 @@ export default function ChatBox({
   }
 
   return (
-    <div className="bg-white h-full flex flex-col">
-      <UserInfoBox open={userInfoOpen} onClose={() => setUserInfoOpen(false)} user={{
-        name: contact?.name || targetEmail.split('@')[0],
-        email: contact?.email || targetEmail,
-        image: contact?.image || null,
-        bio: contact?.bio || '',
-      }} />
-      <div className="p-6 border-b border-gray-200 shadow-sm transition-all duration-500 ease-in-out">
-        <div className="flex items-center space-x-4">
-          <div className="flex-shrink-0 transition-all duration-500 ease-in-out">
-            {contact?.image ? (
-              <Image
-                src={contact.image || "/placeholder.svg"}
-                alt={contact.name}
-                width={48}
-                height={48}
-                className="rounded-full object-cover ring-2 ring-gray-100"
-              />
-              
-            ) : (
-              <div className="w-12 h-12 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm">
-                {contact ? getInitials(contact.name) : "U"}
-              </div>
-              
-            )}
-          </div>
-          <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => setUserInfoOpen(true)}>
-            <p className="text-lg font-semibold text-gray-900 truncate hover:underline group-hover:text-blue-600 transition-all duration-200">{contact?.name || targetEmail}</p>
-            <p className="text-sm text-gray-500 truncate hover:underline group-hover:text-blue-500 transition-all duration-200">{targetEmail}</p>
-          </div>
+    <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Header */}
+      <div className="bg-white/90 backdrop-blur border-b border-white/30 shadow-sm px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
+        <div className="flex-shrink-0">
+          {contact?.image ? (
+            <Image
+              src={contact.image || "/placeholder.svg"}
+              alt={contact.name}
+              width={48}
+              height={48}
+              className="rounded-full object-cover ring-2 ring-blue-200 shadow-md"
+            />
+          ) : (
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-400 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-md">
+              {contact ? getInitials(contact.name) : "U"}
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => setUserInfoOpen(true)}>
+          <p className="text-lg font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">{contact?.name || targetEmail}</p>
+          <p className="text-sm text-gray-500 truncate group-hover:text-blue-500 transition-colors">{targetEmail}</p>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 transition-all duration-500 ease-in-out">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-2 sm:px-6 py-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-8 transition-all duration-500 ease-in-out">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="flex flex-col items-center justify-center h-full text-center mt-16">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-full flex items-center justify-center mb-6 shadow-lg">
               <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No messages yet</h3>
-            <p className="text-gray-600">Start the conversation by sending a message!</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No messages yet</h3>
+            <p className="text-gray-500 max-w-sm">Start the conversation by sending a message!</p>
           </div>
         ) : (
-          <div className="space-y-4 max-w-full transition-all duration-500 ease-in-out">
+          <div className="flex flex-col gap-4 max-w-2xl mx-auto">
             {messages.map((msg, i) => {
-              console.log("🎨 Rendering message:", {
-                index: i,
-                from: msg.from,
-                text: msg.text,
-                hasFile: !!msg.file,
-                fileDetails: msg.file,
-              })
               const isOwnMessage = msg.from === selfEmailRef.current
               const isDeleting = deletingMessageIds.includes((msg as any)._id)
               const fileUrl = typeof msg.file === "string" ? msg.file : msg.file?.url
-              const fileName =
-                (msg as any).fileName || (typeof msg.file === "object" ? msg.file?.name : undefined) || "File"
-              const fileType =
-                (msg as any).fileType || (typeof msg.file === "object" ? msg.file?.type : undefined) || ""
+              const fileName = (msg as any).fileName || (typeof msg.file === "object" ? msg.file?.name : undefined) || "File"
+              const fileType = (msg as any).fileType || (typeof msg.file === "object" ? msg.file?.type : undefined) || ""
               const fileSize = (msg as any).fileSize || (typeof msg.file === "object" ? msg.file?.size : undefined) || 0
-
               const downloadFileName = getProperFileName(fileName, fileType)
-              console.log("📁 Download filename:", downloadFileName, "from:", fileName, "type:", fileType)
-
               return (
                 <div
                   key={i}
-                  className={`relative flex ${isOwnMessage ? "justify-end" : "justify-start"} px-2 group transition-all duration-500 ease-in-out`}
+                  className={`flex w-full flex-col ${isOwnMessage ? "items-end" : "items-start"}`}
                 >
                   <div
-                    className={`max-w-[280px] sm:max-w-[320px] md:max-w-[400px] lg:max-w-[480px] px-6 py-4 rounded-2xl shadow-sm break-words transition-all duration-500 ease-in-out ${
+                    className={`relative group max-w-[80%] px-5 py-3 rounded-2xl shadow-md break-words transition-all duration-300 ${
                       isOwnMessage
-                        ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white"
-                        : "bg-white text-gray-900 border border-gray-200"
+                        ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white ml-auto"
+                        : "bg-white text-gray-900 border border-gray-100 mr-auto"
                     } ${isDeleting ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100"}`}
-                    style={{ transition: 'opacity 0.3s, transform 0.3s' }}
                   >
-                    {/* Edit/Delete buttons for own messages */}
+                    {/* Edit/Delete buttons */}
                     {isOwnMessage && (
-                      <div className="absolute top-2 right-2 flex space-x-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
                         <button
-                          className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-500 shadow-md hover:bg-blue-700 focus:outline-none transition-colors duration-200"
-                          title="Edit message"
-                          aria-label="Edit message"
-                          onClick={() => handleEditMessage((msg as any)._id, msg.text)}
+                          className="w-7 h-7 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                          title="Edit"
+                          onClick={() => handleEditClick((msg as any)._id, msg.text)}
                           disabled={!!msg.file}
-                          style={{ opacity: 1 }}
                         >
-                          {/* Pencil icon */}
-                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm-6 6h6v-6H3v6z" />
-                          </svg>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm-6 6h6v-6H3v6z" /></svg>
                         </button>
                         <button
-                          className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500 shadow-md hover:bg-red-700 focus:outline-none transition-colors duration-200"
-                          title="Delete message"
-                          aria-label="Delete message"
+                          className="w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                          title="Delete"
                           onClick={() => handleDeleteMessage((msg as any)._id)}
-                          style={{ opacity: 1 }}
                         >
-                          {/* Trash icon */}
-                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
-                          </svg>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
                         </button>
                       </div>
                     )}
-                    {fileUrl ? (
-                      <div className="mb-3">
-                        {fileType && fileType.startsWith("image/") ? (
-                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block">
-                            <img
-                              src={fileUrl || "/placeholder.svg"}
-                              alt={fileName}
-                              className="max-h-48 max-w-full rounded-lg mb-2 shadow-sm"
-                            />
-                          </a>
-                        ) : (
-                          <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200 max-w-full">
-                            {getFileIcon(fileType)}
-                            <div className="flex-1 min-w-0 overflow-hidden">
-                              <p className="text-sm font-medium text-gray-900 truncate">{fileName}</p>
-                              <p className="text-xs text-gray-500">{formatFileSize(fileSize)}</p>
-                            </div>
-                          </div>
-                        )}
-                        <a
-                          href={fileUrl}
-                          className={`inline-flex items-center space-x-1 text-sm font-medium ${
-                            isOwnMessage ? "text-blue-200 hover:text-blue-100" : "text-blue-600 hover:text-blue-800"
-                          }`}
-                          download={downloadFileName}
-                          onClick={(e) => {
-                            e.preventDefault()
-                            handleFileDownload(fileUrl, downloadFileName)
+                    {/* Message content */}
+                    {editingId === (msg as any)._id ? (
+                      <div className="flex flex-col space-y-2">
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 text-gray-900 px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                          value={editingText}
+                          onChange={e => setEditingText(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleEditSave((msg as any)._id)
+                            if (e.key === 'Escape') handleEditCancel()
                           }}
-                        >
-                          <span>📎</span>
-                          <span>Download</span>
-                        </a>
+                          autoFocus
+                        />
+                        <div className="flex space-x-2 mt-1">
+                          <button
+                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
+                            onClick={() => handleEditSave((msg as any)._id)}
+                          >
+                            Save
+                          </button>
+                          <button
+                            className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-xs"
+                            onClick={handleEditCancel}
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
-                    ) : null}
-                    {msg.text && <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>}
+                    ) : (
+                      <>
+                        {fileUrl ? (
+                          <div className="mb-2">
+                            {fileType && fileType.startsWith("image/") ? (
+                              <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block">
+                                <img
+                                  src={fileUrl || "/placeholder.svg"}
+                                  alt={fileName}
+                                  className="max-h-48 max-w-full rounded-lg mb-2 shadow-sm border border-gray-200"
+                                />
+                              </a>
+                            ) : (
+                              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 max-w-full">
+                                {getFileIcon(fileType)}
+                                <div className="flex-1 min-w-0 overflow-hidden">
+                                  <p className="text-sm font-medium text-gray-900 truncate">{fileName}</p>
+                                  <p className="text-xs text-gray-500">{formatFileSize(fileSize)}</p>
+                                </div>
+                              </div>
+                            )}
+                            <a
+                              href={fileUrl}
+                              className={`inline-flex items-center space-x-1 text-sm font-medium mt-1 ${
+                                isOwnMessage ? "text-blue-100 hover:text-white" : "text-blue-600 hover:text-blue-800"
+                              }`}
+                              download={downloadFileName}
+                              onClick={e => {
+                                e.preventDefault()
+                                handleFileDownload(fileUrl, downloadFileName)
+                              }}
+                            >
+                              <span>📎</span>
+                              <span>Download</span>
+                            </a>
+                          </div>
+                        ) : null}
+                        {msg.text && <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>}
+                      </>
+                    )}
                   </div>
+                  {/* Timestamp below the bubble */}
+                  {msg.createdAt && (
+                    <span
+                      className={`mt-1 text-xs text-gray-400 select-none ${isOwnMessage ? 'text-right' : 'text-left'}`}
+                      style={{ width: '100%' }}
+                    >
+                      {(() => {
+                        const date = new Date(msg.createdAt!);
+                        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      })()}
+                    </span>
+                  )}
                 </div>
               )
             })}
@@ -639,89 +659,85 @@ export default function ChatBox({
         )}
       </div>
 
-      <div className="p-6 border-t border-gray-200 bg-white transition-all duration-500 ease-in-out">
-        <div className="flex flex-col space-y-2">
-          {/* Pending file preview */}
-          {pendingFile && (
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 max-w-full">
-              {pendingFilePreview ? (
-                <img src={pendingFilePreview} alt={pendingFile.name} className="w-12 h-12 object-cover rounded" />
-              ) : (
-                getFileIcon(pendingFile.type)
-              )}
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className="text-sm font-medium text-gray-900 truncate">{pendingFile.name}</p>
-                <p className="text-xs text-gray-500">{formatFileSize(pendingFile.size)}</p>
-              </div>
-              <button
-                type="button"
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-700 focus:outline-none"
-                title="Remove file"
-                aria-label="Remove file"
-                onClick={removePendingFile}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+      {/* Input Area */}
+      <div className="bg-white/90 backdrop-blur border-t border-white/30 shadow-lg px-6 py-4 sticky bottom-0 z-10">
+        <div className="flex items-end gap-3">
+          <button
+            type="button"
+            onClick={() => !isUploadingFile && !pendingFile && fileInputRef.current?.click()}
+            className={`p-3 rounded-full transition-all duration-200 ${
+              isUploadingFile || pendingFile
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-800"
+            }`}
+            title={isUploadingFile ? "Uploading file..." : pendingFile ? "File selected" : "Attach file"}
+            disabled={!isSocketConnected || isUploadingFile || !!pendingFile}
+          >
+            {isUploadingFile ? (
+              <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Paperclip className="w-5 h-5" />
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,image/*"
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={!isSocketConnected || isUploadingFile || !!pendingFile}
+            />
+          </button>
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={message}
+              className="w-full border border-gray-300 text-gray-900 px-4 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500 text-sm transition-all duration-200 bg-white shadow-sm"
+              onChange={e => setMessage(e.target.value)}
+              placeholder="Type a message..."
+              onKeyDown={e => e.key === "Enter" && sendMessage(message)}
+              disabled={!isSocketConnected || isUploadingFile}
+            />
+          </div>
+          <button
+            onClick={() => sendMessage(message)}
+            className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg"
+            disabled={!isSocketConnected || (!message.trim() && !pendingFile) || isUploadingFile}
+          >
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </button>
+        </div>
+        {/* Pending file preview below input */}
+        {pendingFile && (
+          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 mt-3 max-w-lg mx-auto">
+            {pendingFilePreview ? (
+              <img src={pendingFilePreview} alt={pendingFile.name} className="w-12 h-12 object-cover rounded" />
+            ) : (
+              getFileIcon(pendingFile.type)
+            )}
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-sm font-medium text-gray-900 truncate">{pendingFile.name}</p>
+              <p className="text-xs text-gray-500">{formatFileSize(pendingFile.size)}</p>
             </div>
-          )}
-          <div className="flex space-x-3 items-end">
             <button
               type="button"
-              onClick={() => !isUploadingFile && !pendingFile && fileInputRef.current?.click()}
-              className={`p-3 rounded-full transition-all duration-200 ${
-                isUploadingFile || pendingFile
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
-              }`}
-              title={isUploadingFile ? "Uploading file..." : pendingFile ? "File selected" : "Attach file"}
-              disabled={!isSocketConnected || isUploadingFile || !!pendingFile}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-700 focus:outline-none"
+              title="Remove file"
+              aria-label="Remove file"
+              onClick={removePendingFile}
             >
-              {isUploadingFile ? (
-                <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l7.07-7.07a4 4 0 10-5.656-5.657l-7.071 7.07a6 6 0 108.485 8.486l6.364-6.364"
-                  />
-                </svg>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,image/*"
-                className="hidden"
-                onChange={handleFileChange}
-                disabled={!isSocketConnected || isUploadingFile || !!pendingFile}
-              />
-            </button>
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={message}
-                className="w-full border border-gray-300 text-gray-900 px-4 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500 text-sm transition-all duration-500 ease-in-out"
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Type a message..."
-                onKeyDown={(e) => e.key === "Enter" && sendMessage(message)}
-                disabled={!isSocketConnected || isUploadingFile}
-              />
-            </div>
-            <button
-              onClick={() => sendMessage(message)}
-              className="p-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
-              disabled={!isSocketConnected || (!message.trim() && !pendingFile) || isUploadingFile}
-            >
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
+              <X className="w-4 h-4" />
             </button>
           </div>
-        </div>
+        )}
       </div>
+      <UserInfoBox open={userInfoOpen} onClose={() => setUserInfoOpen(false)} user={{
+        name: contact?.name || targetEmail.split('@')[0],
+        email: contact?.email || targetEmail,
+        image: contact?.image || null,
+        bio: contact?.bio || '',
+      }} />
     </div>
   )
 }
