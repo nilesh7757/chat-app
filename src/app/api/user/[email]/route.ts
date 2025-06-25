@@ -6,14 +6,13 @@ import { authOptions } from "@/lib/auth";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ email: string }> }
+  { params }: { params: { email: string } }
 ) {
   try {
     await connectDB();
     
     // Decode the email from the URL parameter
-    const { email } = await params;
-    const decodedEmail = decodeURIComponent(email);
+    const decodedEmail = decodeURIComponent(params.email);
     
     const user = await User.findOne({ email: decodedEmail }).select('name email image bio');
     
@@ -42,13 +41,12 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ email: string }> }
+  { params }: { params: { email: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const { email } = await params;
-    const decodedEmail = decodeURIComponent(email);
+    const decodedEmail = decodeURIComponent(params.email);
     if (session.user.email !== decodedEmail) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -85,7 +85,7 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
         >
           <X className="w-6 h-6" />
         </Button>
-        <h2 className="text-xl font-bold mb-6 text-center">Edit Profile</h2>
+        <h2 className="text-xl font-bold mb-6 text-center text-gray-900">Edit Profile</h2>
         <div className="flex flex-col items-center mb-6">
           <div className="relative group">
             {image ? (
@@ -124,7 +124,7 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
           <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
           <input
             type="text"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
             value={name}
             onChange={e => setName(e.target.value)}
             maxLength={50}
@@ -134,7 +134,7 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">Bio <span className="text-xs text-gray-400">({bio.length}/200)</span></label>
           <textarea
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 resize-none"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white resize-none"
             value={bio}
             onChange={e => setBio(e.target.value.slice(0, 200))}
             maxLength={200}

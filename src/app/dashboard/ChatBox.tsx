@@ -13,6 +13,7 @@ interface ChatContact {
   email: string
   name: string
   image: string | null
+  bio?: string
 }
 
 interface Contact {
@@ -20,6 +21,7 @@ interface Contact {
   name: string
   image: string | null
   found: boolean
+  bio?: string
 }
 
 interface ChatMessage {
@@ -98,15 +100,16 @@ export default function ChatBox({
     return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
-  const fetchContactDetails = async (email: string): Promise<Contact> => {
+  const fetchContactDetails = async (email: string): Promise<Contact & { bio?: string }> => {
     try {
       const response = await axios.get(`/api/user/${encodeURIComponent(email)}`)
-      const userData = response.data as { email: string; name?: string; image: string | null }
+      const userData = response.data as { email: string; name?: string; image: string | null; bio?: string }
       return {
         email: userData.email,
         name: userData.name || email.split("@")[0],
         image: userData.image,
         found: true,
+        bio: userData.bio || '',
       }
     } catch (error) {
       console.error("Error fetching contact details:", error)
@@ -115,6 +118,7 @@ export default function ChatBox({
         name: email.split("@")[0],
         image: null,
         found: false,
+        bio: '',
       }
     }
   }
@@ -476,14 +480,14 @@ export default function ChatBox({
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="bg-white h-full flex flex-col">
       <UserInfoBox open={userInfoOpen} onClose={() => setUserInfoOpen(false)} user={{
         name: contact?.name || targetEmail.split('@')[0],
         email: contact?.email || targetEmail,
         image: contact?.image || null,
-        bio: (contact as any)?.bio || '',
+        bio: contact?.bio || '',
       }} />
-      <div className="p-6 border-b border-gray-200 bg-white shadow-sm cursor-pointer transition-all duration-500 ease-in-out" onClick={() => setUserInfoOpen(true)}>
+      <div className="p-6 border-b border-gray-200 shadow-sm transition-all duration-500 ease-in-out">
         <div className="flex items-center space-x-4">
           <div className="flex-shrink-0 transition-all duration-500 ease-in-out">
             {contact?.image ? (
@@ -494,15 +498,17 @@ export default function ChatBox({
                 height={48}
                 className="rounded-full object-cover ring-2 ring-gray-100"
               />
+              
             ) : (
               <div className="w-12 h-12 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm">
                 {contact ? getInitials(contact.name) : "U"}
               </div>
+              
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-lg font-semibold text-gray-900 truncate hover:underline transition-all duration-500 ease-in-out">{contact?.name || targetEmail}</p>
-            <p className="text-sm text-gray-500 truncate hover:underline transition-all duration-500 ease-in-out">{targetEmail}</p>
+          <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => setUserInfoOpen(true)}>
+            <p className="text-lg font-semibold text-gray-900 truncate hover:underline group-hover:text-blue-600 transition-all duration-200">{contact?.name || targetEmail}</p>
+            <p className="text-sm text-gray-500 truncate hover:underline group-hover:text-blue-500 transition-all duration-200">{targetEmail}</p>
           </div>
         </div>
       </div>
@@ -599,7 +605,7 @@ export default function ChatBox({
                             />
                           </a>
                         ) : (
-                          <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border max-w-full">
+                          <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200 max-w-full">
                             {getFileIcon(fileType)}
                             <div className="flex-1 min-w-0 overflow-hidden">
                               <p className="text-sm font-medium text-gray-900 truncate">{fileName}</p>
@@ -637,7 +643,7 @@ export default function ChatBox({
         <div className="flex flex-col space-y-2">
           {/* Pending file preview */}
           {pendingFile && (
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border max-w-full">
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 max-w-full">
               {pendingFilePreview ? (
                 <img src={pendingFilePreview} alt={pendingFile.name} className="w-12 h-12 object-cover rounded" />
               ) : (
@@ -675,7 +681,7 @@ export default function ChatBox({
               {isUploadingFile ? (
                 <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
               ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -709,7 +715,7 @@ export default function ChatBox({
               className="p-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
               disabled={!isSocketConnected || (!message.trim() && !pendingFile) || isUploadingFile}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </button>

@@ -17,13 +17,25 @@ export const authOptions: AuthOptions = {
         password: {},
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-        
+        console.log('Authorize called with:', credentials);
+        if (!credentials?.email || !credentials?.password) {
+          console.log('Missing email or password');
+          return null;
+        }
         await connectDB();
         const user = await User.findOne({ email: credentials.email });
-        if (user && user.password && await compare(credentials.password, user.password)) {
-          return user;
+        console.log('User found:', user);
+        if (user && user.password) {
+          const isMatch = await compare(credentials.password, user.password);
+          console.log('Password match:', isMatch);
+          if (isMatch) {
+            const userObj = user.toObject();
+            delete userObj.password;
+            console.log('Returning user:', userObj);
+            return userObj;
+          }
         }
+        console.log('Authorization failed');
         return null;
       },
     }),

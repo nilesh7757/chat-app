@@ -11,6 +11,8 @@ import EditProfileModal from './EditProfileModal';
 import { Menu, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import UserInfoBox from './UserInfoBox';
+import { useTheme } from "next-themes";
+import { Sun, Moon } from "lucide-react";
 
 interface Contact {
   email: string;
@@ -30,6 +32,7 @@ export default function Page() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [userInfoOpen, setUserInfoOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -77,10 +80,6 @@ export default function Page() {
       .join('')
       .toUpperCase()
       .slice(0, 2);
-  };
-
-  const handleProfileClick = () => {
-    setUserInfoOpen(true);
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,7 +150,10 @@ export default function Page() {
   };
 
   return (
-    <div className="h-screen flex bg-gray-50 relative">
+    <div className="h-screen flex bg-white relative">
+      {/* Floating dark mode toggle button in top right */}
+      {/* Theme toggle removed */}
+
       {/* Hamburger button for mobile */}
       <Button
         className="absolute top-4 left-4 z-50 md:hidden p-2 rounded-full bg-white shadow-lg border border-gray-200 focus:outline-none"
@@ -174,72 +176,38 @@ export default function Page() {
         className={`fixed inset-y-0 left-0 z-50 w-80 max-w-full bg-white border-r border-gray-200 flex flex-col shadow-lg transition-transform duration-500 ease-in-out md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         {/* Header with user profile (copied from below) */}
-        <div className="p-6 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4 flex-1">
-              <div className="flex-shrink-0 relative group">
-                <div 
-                  className="cursor-pointer relative"
-                  onClick={handleProfileClick}
-                >
-                  {userProfile?.image ? (
-                    <Image
-                      src={userProfile.image}
-                      alt={userProfile.name}
-                      width={48}
-                      height={48}
-                      className="rounded-full object-cover ring-2 ring-gray-100"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm">
-                      {userProfile ? getInitials(userProfile.name) : 'U'}
-                    </div>
-                  )}
-                  {/* Pencil icon overlay */}
-                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <Pencil className="w-5 h-5 text-white" />
-                  </div>
-                  {isUploading && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  )}
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
+        <div className="p-6 border-b border-gray-200 bg-white flex items-center justify-between">
+          <div className="flex items-center gap-4 w-full">
+            <div className="flex-shrink-0">
+              {userProfile?.image ? (
+                <Image
+                  src={userProfile.image}
+                  alt={userProfile.name}
+                  width={48}
+                  height={48}
+                  className="rounded-full object-cover ring-2 ring-gray-100"
                 />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-semibold text-gray-900 truncate">
-                  {userProfile?.name || 'User'}
-                </p>
-                <p className="text-sm text-gray-500 truncate">
-                  {userProfile?.email || 'user@example.com'}
-                </p>
-                {isUploading && (
-                  <p className="text-xs text-blue-600 font-medium">Updating profile...</p>
-                )}
-              </div>
+              ) : (
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm">
+                  {userProfile ? getInitials(userProfile.name) : 'U'}
+                </div>
+              )}
             </div>
-            {/* Edit Profile Button */}
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="font-semibold text-gray-900 text-base leading-tight truncate">{userProfile?.name || 'User'}</span>
+              <span className="text-gray-500 text-sm truncate">{userProfile?.email}</span>
+            </div>
             <button
-              className="ml-2 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200"
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200"
               title="Edit Profile"
               onClick={() => setEditProfileOpen(true)}
               type="button"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
+              <Pencil className="w-5 h-5" />
             </button>
-            {/* Sign Out Button */}
             <button
               onClick={handleSignOut}
-              className="ml-3 p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-200"
+              className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-200"
               title="Sign Out"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,71 +223,38 @@ export default function Page() {
 
       {/* Desktop Sidebar */}
       <div className="w-80 lg:w-96 bg-white border-r border-gray-200 flex-col shadow-sm hidden md:flex">
-        <div className="p-6 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4 flex-1">
-              <div className="flex-shrink-0 relative group">
-                <div 
-                  className="cursor-pointer relative"
-                  onClick={handleProfileClick}
-                >
-                  {userProfile?.image ? (
-                    <Image
-                      src={userProfile.image}
-                      alt={userProfile.name}
-                      width={48}
-                      height={48}
-                      className="rounded-full object-cover ring-2 ring-gray-100"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm">
-                      {userProfile ? getInitials(userProfile.name) : 'U'}
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <Pencil className="w-5 h-5 text-white" />
-                  </div>
-                  {isUploading && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  )}
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
+        <div className="p-6 border-b border-gray-200 bg-white flex items-center justify-between">
+          <div className="flex items-center gap-4 w-full">
+            <div className="flex-shrink-0">
+              {userProfile?.image ? (
+                <Image
+                  src={userProfile.image}
+                  alt={userProfile.name}
+                  width={48}
+                  height={48}
+                  className="rounded-full object-cover ring-2 ring-gray-100"
                 />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-semibold text-gray-900 truncate">
-                  {userProfile?.name || 'User'}
-                </p>
-                <p className="text-sm text-gray-500 truncate">
-                  {userProfile?.email || 'user@example.com'}
-                </p>
-                {isUploading && (
-                  <p className="text-xs text-blue-600 font-medium">Updating profile...</p>
-                )}
-              </div>
+              ) : (
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm">
+                  {userProfile ? getInitials(userProfile.name) : 'U'}
+                </div>
+              )}
             </div>
-            {/* Edit Profile Button */}
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="font-semibold text-gray-900 text-base leading-tight truncate">{userProfile?.name || 'User'}</span>
+              <span className="text-gray-500 text-sm truncate">{userProfile?.email || 'user@example.com'}</span>
+            </div>
             <button
-              className="ml-2 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200"
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200"
               title="Edit Profile"
               onClick={() => setEditProfileOpen(true)}
               type="button"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
+              <Pencil className="w-5 h-5" />
             </button>
-            {/* Sign Out Button */}
             <button
               onClick={handleSignOut}
-              className="ml-3 p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-200"
+              className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-200"
               title="Sign Out"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
