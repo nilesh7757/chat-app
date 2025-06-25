@@ -6,17 +6,26 @@ import { signIn } from "next-auth/react";
 export default function SignUpPage() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleSignup = async () => {
     if (!form.name || !form.email || !form.password) {
-      alert("Please fill in all fields");
+      setError("Please fill in all fields");
+      return;
+    }
+    
+    if (form.password.length < 6) {
+      setError("Password must be at least 6 characters long");
       return;
     }
     
     setIsLoading(true);
+    setError(null);
     
     try {
+      console.log('🚀 Starting signup process for:', form.email);
+      
       // First, create the account
       const signupRes = await fetch("/api/signup", {
         method: "POST",
@@ -26,9 +35,10 @@ export default function SignUpPage() {
 
       if (!signupRes.ok) {
         const data = await signupRes.json();
-        alert("Signup failed: " + data.error);
-        return;
+        throw new Error(data.error || 'Signup failed');
       }
+
+      console.log('✅ Account created successfully, sending OTP...');
 
       // Then, send OTP
       const otpRes = await fetch("/api/auth/send-otp", {
@@ -37,17 +47,21 @@ export default function SignUpPage() {
         body: JSON.stringify({ email: form.email }),
       });
 
+      const otpData = await otpRes.json();
+
       if (otpRes.ok) {
-        alert("Account created successfully! Please check your email for OTP.");
+        console.log('✅ OTP sent successfully');
+        alert("Account created successfully! Please check your email for OTP verification.");
         router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
       } else {
-        const data = await otpRes.json();
-        alert("Account created but OTP sending failed: " + data.error);
+        console.warn('⚠️ Account created but OTP sending failed:', otpData.error);
+        // Still redirect to verification page, user can resend OTP
+        alert(`Account created! ${otpData.error || 'Please check your email or resend OTP on the next page.'}`);
         router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
       }
-    } catch (error) {
-      console.error('Signup error:', error);
-      alert("Signup failed. Please try again.");
+    } catch (error: any) {
+      console.error('❌ Signup error:', error);
+      setError(error.message || "Signup failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -55,16 +69,23 @@ export default function SignUpPage() {
 
   const handleGoogleSignUp = async () => {
     setIsLoading(true);
-    const res = await signIn("google", {
-      callbackUrl: "/dashboard",
-      redirect: false,
-    });
+    setError(null);
     
-    if (res?.ok) {
-      router.push("/dashboard");
-    } else {
+    try {
+      const res = await signIn("google", {
+        callbackUrl: "/dashboard",
+        redirect: false,
+      });
+      
+      if (res?.ok) {
+        router.push("/dashboard");
+      } else {
+        throw new Error(res?.error || "Google sign up failed");
+      }
+    } catch (error: any) {
+      setError(error.message || "Google sign up failed");
+    } finally {
       setIsLoading(false);
-      alert("Google sign up failed");
     }
   };
 
@@ -75,6 +96,12 @@ export default function SignUpPage() {
           <h1 className="text-3xl font-bold text-gray-900">Sign Up</h1>
           <p className="mt-2 text-gray-600">Create your account</p>
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
 
         <div className="space-y-4">
           <div>
@@ -102,18 +129,19 @@ export default function SignUpPage() {
           <div>
             <input
               type="password"
-              placeholder="Password"
+              placeholder="Password (min 6 characters)"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
               disabled={isLoading}
+              minLength={6}
             />
           </div>
 
           <button
             onClick={handleSignup}
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 transition-colors"
           >
             {isLoading ? "Creating Account..." : "Sign Up"}
           </button>
@@ -130,7 +158,7 @@ export default function SignUpPage() {
           <button
             onClick={handleGoogleSignUp}
             disabled={isLoading}
-            className="w-full bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 flex items-center justify-center"
+            className="w-full bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 flex items-center justify-center transition-colors"
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -149,6 +177,22 @@ export default function SignUpPage() {
               Sign in
             </a>
           </p>
+        </div>
+
+        {/* Email configuration help */}
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <h4 className="text-sm font-semibold text-blue-800 mb-2">Having trouble with email verification?</h4>
+          <p className="text-xs text-blue-700 mb-2">
+            If you don't receive the OTP email, it might be a configuration issue.
+          </p>
+          <a 
+            href="/test-email" 
+            className="text-xs text-blue-600 hover:text-blue-800 underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Test email configuration →
+          </a>
         </div>
       </div>
     </div>
