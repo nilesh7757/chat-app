@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     // Create transporter with better error handling
     let transporter;
     try {
-      transporter = nodemailer.createTransporter({
+      transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
           user: emailUser,

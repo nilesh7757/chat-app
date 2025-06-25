@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     // Test email transport with enhanced configuration
     let transporter;
     try {
-      transporter = nodemailer.createTransporter({
+      transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
           user: emailUser,
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       console.error('❌ Email transport verification failed:', verifyError);
       
       let errorMessage = 'Email transport verification failed.';
-      let troubleshooting = [];
+      let troubleshooting: string[] = [];
       
       if (verifyError instanceof Error) {
         if (verifyError.message.includes('Invalid login')) {
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
       }
       
       let errorMessage = 'Failed to send test email.';
-      let troubleshooting = [];
+      let troubleshooting: string[] = [];
 
       if (sendError instanceof Error) {
         if (sendError.message.includes('Invalid recipient')) {
