@@ -53,15 +53,17 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
         const res = await axios.post('/api/upload-profile', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        newImage = res.data.image;
+        const data = res.data as { image: string };
+        newImage = data.image;
       }
       // 3. Refetch updated profile
       const updated = await axios.get(`/api/user/${encodeURIComponent(userProfile?.email || '')}`);
+      const updatedData = updated.data as { name: string; email: string; image: string | null; bio?: string };
       onProfileUpdated({
-        name: updated.data.name,
-        email: updated.data.email,
+        name: updatedData.name,
+        email: updatedData.email,
         image: newImage,
-        bio: updated.data.bio,
+        bio: updatedData.bio,
       });
       onClose();
     } catch (err: any) {

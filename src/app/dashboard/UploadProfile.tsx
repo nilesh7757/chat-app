@@ -23,7 +23,8 @@ export default function UploadProfile() {
       alert("Uploaded successfully!");
       window.location.reload(); // refresh to get new session image
     } else {
-      alert("Upload failed: " + res.data.error);
+      const data = res.data as { error?: string };
+      alert("Upload failed: " + (data.error || "Unknown error"));
     }
   };
 

@@ -22,7 +22,7 @@ export default function TestEmailPage() {
 
     try {
       const res = await axios.post('/api/test-email', { email });
-      const data = res.data;
+      const data = res.data as { details?: string; error?: string };
       if (res.status === 200) {
         setStatus('success');
       } else {

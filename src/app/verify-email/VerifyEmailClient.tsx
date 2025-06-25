@@ -32,7 +32,7 @@ export default function VerifyEmailClient() {
     
     try {
       const res = await axios.post("/api/auth/verify-otp", { email, otp });
-      const data = res.data;
+      const data = res.data as { success?: boolean; error?: string };
       if (data.success) {
         setStatus("success");
       } else {
@@ -52,7 +52,7 @@ export default function VerifyEmailClient() {
     
     try {
       const res = await axios.post("/api/auth/send-otp", { email });
-      const data = res.data;
+      const data = res.data as { success?: boolean; error?: string };
       if (data.success) {
         setResent(true);
         setStatus("OTP sent to your email successfully.");

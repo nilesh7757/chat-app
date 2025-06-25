@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import axios from 'axios';
-import type { AxiosRequestConfig } from 'axios';
 
 interface Contact {
   email: string;
@@ -157,7 +156,7 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
     }
 
     try {
-      const config: AxiosRequestConfig = { headers: { 'Content-Type': 'application/json' }, data: { contactEmail } };
+      const config = { headers: { 'Content-Type': 'application/json' }, data: { contactEmail } };
       const response = await axios.delete('/api/contacts/delete', config);
 
       if (response.status === 200) {

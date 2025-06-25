@@ -19,7 +19,8 @@ export default function DeleteProfileButton() {
         alert("Profile photo deleted successfully!");
         window.location.reload(); // Refresh to show default avatar
       } else {
-        alert("Delete failed: " + res.data.error);
+        const data = res.data as { error?: string };
+        alert("Delete failed: " + (data.error || "Unknown error"));
       }
     } catch {
       alert("Delete failed: Network error");
