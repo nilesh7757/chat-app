@@ -1,5 +1,6 @@
 'use client';
 import { useState } from "react";
+import axios from 'axios';
 
 export default function DeleteProfileButton() {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -12,16 +13,13 @@ export default function DeleteProfileButton() {
     setIsDeleting(true);
     
     try {
-      const res = await fetch("/api/delete-profile", {
-        method: "DELETE",
-      });
+      const res = await axios.delete("/api/delete-profile");
 
-      if (res.ok) {
+      if (res.status === 200) {
         alert("Profile photo deleted successfully!");
         window.location.reload(); // Refresh to show default avatar
       } else {
-        const data = await res.json();
-        alert("Delete failed: " + data.error);
+        alert("Delete failed: " + res.data.error);
       }
     } catch {
       alert("Delete failed: Network error");

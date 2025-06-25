@@ -37,9 +37,18 @@ export async function POST(request: NextRequest) {
     // Validate file type
     const allowedTypes = [
       'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
-      'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/pdf',
+      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/plain', 'text/csv'
+      'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain', 'text/csv',
+      // Add more document types
+      'application/vnd.oasis.opendocument.text', // .odt
+      'application/vnd.oasis.opendocument.spreadsheet', // .ods
+      'application/rtf', // .rtf
+      'application/x-zip-compressed', 'application/zip',
+      'application/vnd.rar',
+      'application/octet-stream' // fallback for some docs
     ];
     
     if (!allowedTypes.includes(file.type)) {

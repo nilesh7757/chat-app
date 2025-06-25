@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getSession } from 'next-auth/react';
 import Image from 'next/image';
 import React from 'react';
+import axios from 'axios';
 
 interface ChatContact {
   email: string;
@@ -47,6 +48,7 @@ export default function ChatBox({
   const [hasAddedContact, setHasAddedContact] = useState(false);
   const [contactNotification, setContactNotification] = useState<string | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const selfEmailRef = useRef<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -86,6 +88,21 @@ export default function ChatBox({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
         </svg>
       );
+    } else if (fileType.includes('powerpoint') || fileType.includes('presentation')) {
+      return (
+        <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 4h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h8v4H8z" />
+        </svg>
+      );
+    } else if (fileType.includes('zip') || fileType.includes('rar')) {
+      return (
+        <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <rect x="3" y="7" width="18" height="13" rx="2" strokeWidth={2} stroke="currentColor" fill="none" />
+          <path d="M16 3v4M8 3v4M12 3v4" strokeWidth={2} stroke="currentColor" fill="none" />
+        </svg>
+      );
     } else {
       return (
         <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,16 +122,14 @@ export default function ChatBox({
 
   const fetchContactDetails = async (email: string): Promise<Contact> => {
     try {
-      const response = await fetch(`/api/user/${encodeURIComponent(email)}`);
-      if (response.ok) {
-        const userData = await response.json();
-        return {
-          email: userData.email,
-          name: userData.name || email.split('@')[0],
-          image: userData.image,
-          found: true
-        };
-      }
+      const response = await axios.get(`/api/user/${encodeURIComponent(email)}`);
+      const userData = response.data;
+      return {
+        email: userData.email,
+        name: userData.name || email.split('@')[0],
+        image: userData.image,
+        found: true
+      };
     } catch (error) {
       console.error('Error fetching contact details:', error);
     }
@@ -137,15 +152,9 @@ export default function ChatBox({
       onAddContact(contactDetails);
       
       // Add to database for current user
-      const response = await fetch('/api/contacts/add', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ contactEmail: email }),
-      });
+      const response = await axios.post('/api/contacts/add', { contactEmail: email });
 
-      if (response.ok) {
+      if (response.status === 200) {
         console.log('Contact added to database');
       } else {
         console.error('Failed to add contact to database');
@@ -173,10 +182,13 @@ export default function ChatBox({
       selfEmailRef.current = self;
       console.log('🔗 Connecting to WebSocket for user:', self);
 
-      const socket = new WebSocket('ws://localhost:3001');
+      // Use environment variable for WebSocket URL
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
+      const socket = new WebSocket(wsUrl);
       socketRef.current = socket;
 
       socket.onopen = () => {
+        setIsSocketConnected(true);
         console.log('🔗 WebSocket connected successfully');
         const joinMessage = { type: 'join', self, target: targetEmail };
         console.log('📤 Sending join message:', joinMessage);
@@ -184,10 +196,12 @@ export default function ChatBox({
       };
 
       socket.onerror = (error) => {
+        setIsSocketConnected(false);
         console.error('❌ WebSocket error:', error);
       };
 
       socket.onclose = (event) => {
+        setIsSocketConnected(false);
         console.log('🔌 WebSocket disconnected:', event.code, event.reason);
       };
 
@@ -270,6 +284,7 @@ export default function ChatBox({
 
     connect();
     return () => {
+      setIsSocketConnected(false);
       console.log('🧹 Cleaning up WebSocket connection');
       if (socketRef.current) {
         socketRef.current.close();
@@ -300,15 +315,21 @@ export default function ChatBox({
     try {
       setIsUploadingFile(true);
       console.log('📤 Uploading file to server...');
-      const res = await fetch('/api/upload-file', {
-        method: 'POST',
-        body: formData,
+      const res = await axios.post('/api/upload-file', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
-      const data = await res.json();
+      const data = res.data as { url?: string; error?: string; fileName?: string; fileType?: string; fileSize?: number };
       console.log('📥 Upload response:', data);
       if (data.url) {
         console.log('✅ File uploaded successfully, sending message');
-        sendMessage('', { url: data.url, name: file.name, type: file.type, size: file.size });
+        sendMessage('', {
+          url: data.url,
+          name: data.fileName || file.name,
+          type: data.fileType || file.type,
+          size: data.fileSize || file.size
+        });
       } else {
         alert('File upload failed: ' + (data.error || 'Unknown error'));
       }
@@ -340,9 +361,16 @@ export default function ChatBox({
       msgObj.file = fileObj;
     }
     
-    // Only include file if present
-    const wsMsg: { type: string; text: string; file?: { url: string; name: string; type: string; size?: number } } = { type: 'chat', text: msgObj.text };
-    if (msgObj.file) wsMsg.file = msgObj.file;
+    // Only include file as JSON string if present
+    const wsMsg: { type: string; text: string; file?: string } = { type: 'chat', text: msgObj.text };
+    if (msgObj.file) {
+      wsMsg.file = JSON.stringify({
+        url: msgObj.file.url,
+        name: msgObj.file.name,
+        type: msgObj.file.type,
+        size: msgObj.file.size
+      });
+    }
     
     console.log('🌐 WebSocket message being sent:', wsMsg);
     console.log('🌐 WebSocket state:', socketRef.current?.readyState);
@@ -357,11 +385,46 @@ export default function ChatBox({
     setMessage('');
   };
 
+  // Delete message handler
+  const handleDeleteMessage = async (msgId: string) => {
+    try {
+      const session = await getSession();
+      if (!session?.user?.email) return;
+      await axios.delete('http://localhost:3001/messages/' + msgId, {
+        data: { email: session.user.email }
+      });
+      setMessages((prev) => prev.filter((m: any) => m._id !== msgId));
+    } catch (err) {
+      alert('Failed to delete message');
+      console.error(err);
+    }
+  };
+
+  // Edit message handler
+  const handleEditMessage = async (msgId: string, oldText: string) => {
+    const newText = prompt('Edit your message:', oldText);
+    if (!newText || newText.trim() === oldText) return;
+    try {
+      const session = await getSession();
+      if (!session?.user?.email) return;
+      const res = await axios.patch('http://localhost:3001/messages/' + msgId, {
+        email: session.user.email,
+        text: newText.trim()
+      });
+      setMessages((prev) => prev.map((m: any) => m._id === msgId ? { ...m, text: res.data.data.text } : m));
+    } catch (err) {
+      alert('Failed to edit message');
+      console.error(err);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Chat Header */}
       <div className="p-6 border-b border-gray-200 bg-white shadow-sm">
         <div className="flex items-center space-x-4">
+          {/* Connection status indicator removed */}
+          {/* <div className={`w-3 h-3 rounded-full ${isSocketConnected ? 'bg-green-500' : 'bg-red-400'} border border-gray-300`} title={isSocketConnected ? 'Connected' : 'Disconnected'}></div> */}
           <div className="flex-shrink-0">
             {contact?.image ? (
               <Image
@@ -384,16 +447,18 @@ export default function ChatBox({
             <p className="text-sm text-gray-500 truncate">
               {targetEmail}
             </p>
-            {!hasAddedContact && (
+            {/* Remove blue message for adding contact */}
+            {/* {!hasAddedContact && (
               <p className="text-sm text-blue-600 font-medium mt-1">
                 Send a message to add to contacts
               </p>
-            )}
-            {contactNotification && (
+            )} */}
+            {/* Remove green contact notification */}
+            {/* {contactNotification && (
               <p className="text-sm text-green-600 font-medium mt-1 animate-pulse">
                 {contactNotification}
               </p>
-            )}
+            )} */}
           </div>
         </div>
       </div>
@@ -418,19 +483,42 @@ export default function ChatBox({
                 from: msg.from, 
                 text: msg.text, 
                 hasFile: !!msg.file,
-                fileDetails: msg.file ? {
-                  url: msg.file.url,
-                  name: msg.file.name,
-                  type: msg.file.type,
-                  size: msg.file.size
-                } : null
+                fileDetails: msg.file
               });
               const isOwnMessage = msg.from === selfEmailRef.current;
+              // Extract file info from message
+              const fileUrl = typeof msg.file === 'string' ? msg.file : msg.file?.url;
+              const fileName = (msg as any).fileName || (typeof msg.file === 'object' ? msg.file?.name : undefined) || 'File';
+              const fileType = (msg as any).fileType || (typeof msg.file === 'object' ? msg.file?.type : undefined) || '';
+              const fileSize = (msg as any).fileSize || (typeof msg.file === 'object' ? msg.file?.size : undefined) || 0;
               return (
                 <div
                   key={i}
-                  className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} px-2`}
+                  className={`relative flex ${isOwnMessage ? 'justify-end' : 'justify-start'} px-2 group`}
                 >
+                  {/* Hover actions for own messages, floating outside bubble */}
+                  {isOwnMessage && (
+                    <div className="absolute -top-3 -right-3 flex space-x-1 opacity-0 group-hover:opacity-100 pointer-events-auto transition-all duration-200 z-20">
+                      <button
+                        className="w-8 h-8 flex items-center justify-center bg-white shadow-lg rounded-full hover:scale-110 hover:bg-blue-50 transition"
+                        aria-label="Edit"
+                        onClick={() => handleEditMessage((msg as any)._id, msg.text)}
+                      >
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                      <button
+                        className="w-8 h-8 flex items-center justify-center bg-white shadow-lg rounded-full hover:scale-110 hover:bg-red-50 transition"
+                        aria-label="Delete"
+                        onClick={() => handleDeleteMessage((msg as any)._id)}
+                      >
+                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                   <div
                     className={`max-w-[280px] sm:max-w-[320px] md:max-w-[400px] lg:max-w-[480px] px-6 py-4 rounded-2xl shadow-sm break-words ${
                       isOwnMessage
@@ -439,23 +527,40 @@ export default function ChatBox({
                     }`}
                   >
                     {/* Show file if present and valid */}
-                    {msg.file && msg.file.url ? (
+                    {fileUrl ? (
                       <div className="mb-3">
-                        {msg.file.type && msg.file.type.startsWith('image/') ? (
-                          <a href={msg.file.url} target="_blank" rel="noopener noreferrer" className="block">
-                            <img src={msg.file.url} alt={msg.file.name} className="max-h-48 max-w-full rounded-lg mb-2 shadow-sm" />
+                        {fileType && fileType.startsWith('image/') ? (
+                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block">
+                            <img src={fileUrl} alt={fileName} className="max-h-48 max-w-full rounded-lg mb-2 shadow-sm" />
                           </a>
                         ) : (
                           <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border max-w-full">
-                            {getFileIcon(msg.file.type)}
+                            {getFileIcon(fileType)}
                             <div className="flex-1 min-w-0 overflow-hidden">
-                              <p className="text-sm font-medium text-gray-900 truncate">{msg.file.name}</p>
-                              <p className="text-xs text-gray-500">{formatFileSize(msg.file.size || 0)}</p>
+                              <p className="text-sm font-medium text-gray-900 truncate">{fileName}</p>
+                              <p className="text-xs text-gray-500">{formatFileSize(fileSize)}</p>
                             </div>
                           </div>
                         )}
                         <a
-                          href={msg.file.url}
+                          href={(() => {
+                            // If it's a Cloudinary URL and not an image, force download with fl_attachment
+                            if (
+                              fileUrl &&
+                              fileType &&
+                              !fileType.startsWith('image/') &&
+                              typeof fileUrl === 'string' &&
+                              fileUrl.includes('res.cloudinary.com') &&
+                              fileUrl.includes('/upload/')
+                            ) {
+                              // Insert /fl_attachment/ after /upload/
+                              return fileUrl.replace(
+                                /\/upload\//,
+                                '/upload/fl_attachment/'
+                              );
+                            }
+                            return fileUrl;
+                          })()}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={`inline-flex items-center space-x-1 text-sm font-medium ${
@@ -463,7 +568,7 @@ export default function ChatBox({
                               ? 'text-blue-200 hover:text-blue-100'
                               : 'text-blue-600 hover:text-blue-800'
                           }`}
-                          download={msg.file.name}
+                          download={fileName}
                         >
                           <span>📎</span>
                           <span>Download</span>
@@ -497,7 +602,7 @@ export default function ChatBox({
                 : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800'
             }`}
             title={isUploadingFile ? "Uploading file..." : "Attach file"}
-            disabled={isUploadingFile}
+            disabled={!isSocketConnected || isUploadingFile}
           >
             {isUploadingFile ? (
               <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
@@ -509,9 +614,10 @@ export default function ChatBox({
             <input
               ref={fileInputRef}
               type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,image/*"
               className="hidden"
               onChange={handleFileChange}
-              disabled={isUploadingFile}
+              disabled={!isSocketConnected || isUploadingFile}
             />
           </button>
           
@@ -524,6 +630,7 @@ export default function ChatBox({
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type a message..."
               onKeyDown={(e) => e.key === 'Enter' && sendMessage(message)}
+              disabled={!isSocketConnected || isUploadingFile}
             />
           </div>
           
@@ -531,7 +638,7 @@ export default function ChatBox({
           <button
             onClick={() => sendMessage(message)}
             className="p-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
-            disabled={!message.trim()}
+            disabled={!isSocketConnected || !message.trim()}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

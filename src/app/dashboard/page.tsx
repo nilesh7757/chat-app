@@ -6,6 +6,7 @@ import ChatBox from './ChatBox';
 import { getSession, signOut } from 'next-auth/react';
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
+import axios from 'axios';
 
 interface Contact {
   email: string;
@@ -40,11 +41,8 @@ export default function Page() {
   useEffect(() => {
     const fetchContacts = async () => {
       try {
-        const response = await fetch('/api/contacts');
-        if (response.ok) {
-          const data = await response.json();
-          setContacts(data.contacts || []);
-        }
+        const response = await axios.get('/api/contacts');
+        setContacts(response.data.contacts || []);
       } catch (error) {
         console.error('Error fetching contacts:', error);
       }
@@ -74,22 +72,15 @@ export default function Page() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/upload-profile', {
-        method: 'POST',
-        body: formData,
+      const response = await axios.post('/api/upload-profile', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setUserProfile(prev => prev ? { ...prev, image: data.image } : null);
-        window.location.reload();
-      } else {
-        const errorData = await response.json();
-        alert('Upload failed: ' + errorData.error);
-      }
-    } catch (error) {
+      setUserProfile(prev => prev ? { ...prev, image: response.data.image } : null);
+      window.location.reload();
+    } catch (error: any) {
+      alert('Upload failed: ' + (error.response?.data?.error || 'Network error'));
       console.error('Error uploading profile picture:', error);
-      alert('Upload failed: Network error');
     } finally {
       setIsUploading(false);
     }
@@ -103,15 +94,8 @@ export default function Page() {
       
       // Persist to database
       try {
-        const response = await fetch('/api/contacts/add', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ contactEmail: contact.email }),
-        });
-
-        if (!response.ok) {
+        const response = await axios.post('/api/contacts/add', { contactEmail: contact.email });
+        if (response.status !== 200) {
           console.error('Failed to save contact to database');
           // Remove from local state if database save failed
           setContacts(prev => prev.filter(c => c.email !== contact.email));
@@ -128,11 +112,8 @@ export default function Page() {
 
   const refreshContacts = async () => {
     try {
-      const response = await fetch('/api/contacts');
-      if (response.ok) {
-        const data = await response.json();
-        setContacts(data.contacts || []);
-      }
+      const response = await axios.get('/api/contacts');
+      setContacts(response.data.contacts || []);
     } catch (error) {
       console.error('Error refreshing contacts:', error);
     }

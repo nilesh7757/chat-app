@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import axios from 'axios';
 
 interface Contact {
   email: string;
@@ -32,9 +33,8 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
 
   const fetchUserDetails = async (email: string): Promise<Contact> => {
     try {
-      const response = await fetch(`/api/user/${encodeURIComponent(email)}`);
-      const data = await response.json();
-      return data;
+      const response = await axios.get(`/api/user/${encodeURIComponent(email)}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching user details:', error);
       return {
@@ -49,14 +49,10 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
   const fetchUnknownSenders = async () => {
     try {
       console.log('Fetching unknown senders...');
-      const response = await fetch('/api/contacts/unknown-senders');
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Unknown senders response:', data);
-        setUnknownSenders(data.unknownSenders || []);
-      } else {
-        console.error('Failed to fetch unknown senders:', response.status);
-      }
+      const response = await axios.get('/api/contacts/unknown-senders');
+      const data = response.data;
+      console.log('Unknown senders response:', data);
+      setUnknownSenders(data.unknownSenders || []);
     } catch (error) {
       console.error('Error fetching unknown senders:', error);
     }
@@ -86,15 +82,9 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
       setContacts(prev => [...prev, userDetails]);
       
       // Persist to database
-      const response = await fetch('/api/contacts/add', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ contactEmail: email }),
-      });
+      const response = await axios.post('/api/contacts/add', { contactEmail: email });
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         console.error('Failed to save contact to database');
         // Remove from local state if database save failed
         setContacts(prev => prev.filter(contact => contact.email !== email));
@@ -130,15 +120,9 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
         setContacts(prev => [...prev, userDetails]);
         
         // Persist to database
-        const response = await fetch('/api/contacts/add', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ contactEmail }),
-        });
+        const response = await axios.post('/api/contacts/add', { contactEmail });
 
-        if (!response.ok) {
+        if (response.status !== 200) {
           console.error('Failed to save contact to database');
           // Remove from local state if database save failed
           setContacts(prev => prev.filter(contact => contact.email !== contactEmail));
@@ -170,15 +154,9 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
     }
 
     try {
-      const response = await fetch('/api/contacts/delete', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ contactEmail }),
-      });
+      const response = await axios.delete('/api/contacts/delete', { data: { contactEmail } });
 
-      if (response.ok) {
+      if (response.status === 200) {
         // Remove from local state
         setContacts(prev => prev.filter(contact => contact.email !== contactEmail));
         
@@ -189,8 +167,7 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
           router.push(`/dashboard?${params.toString()}`);
         }
       } else {
-        const data = await response.json();
-        alert('Failed to delete contact: ' + data.error);
+        alert('Failed to delete contact: ' + response.data.error);
       }
     } catch (error) {
       console.error('Error deleting contact:', error);
@@ -295,10 +272,9 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
                       </div>
                     )}
                   </div>
-                  
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">
-                      {sender.name}
+                      Unknown
                     </p>
                     <p className="text-xs text-gray-500 truncate">
                       {sender.email}
@@ -309,8 +285,8 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
                     <p className="text-xs text-yellow-600 font-medium mt-1">
                       {formatTime(sender.lastMessageTime.toString())}
                     </p>
+                    <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-yellow-200 text-yellow-800 rounded-full font-semibold">Unknown Sender</span>
                   </div>
-                  
                   {/* New message indicator */}
                   <div className="w-3 h-3 bg-yellow-500 rounded-full flex-shrink-0 shadow-sm"></div>
                 </div>

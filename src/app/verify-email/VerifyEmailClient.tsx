@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import axios from 'axios';
 
 export default function VerifyEmailClient() {
   const router = useRouter();
@@ -30,14 +31,8 @@ export default function VerifyEmailClient() {
     setStatus(null);
     
     try {
-      const res = await fetch("/api/auth/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
-      });
-      
-      const data = await res.json();
-      
+      const res = await axios.post("/api/auth/verify-otp", { email, otp });
+      const data = res.data;
       if (data.success) {
         setStatus("success");
       } else {
@@ -56,14 +51,8 @@ export default function VerifyEmailClient() {
     setStatus(null);
     
     try {
-      const res = await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      
-      const data = await res.json();
-      
+      const res = await axios.post("/api/auth/send-otp", { email });
+      const data = res.data;
       if (data.success) {
         setResent(true);
         setStatus("OTP sent to your email successfully.");

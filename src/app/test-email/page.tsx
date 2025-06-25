@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import axios from 'axios';
 
 export default function TestEmailPage() {
   const [email, setEmail] = useState('');
@@ -20,22 +21,16 @@ export default function TestEmailPage() {
     setErrorDetails(null);
 
     try {
-      const res = await fetch('/api/test-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
+      const res = await axios.post('/api/test-email', { email });
+      const data = res.data;
+      if (res.status === 200) {
         setStatus('success');
       } else {
         setStatus('error');
         setErrorDetails(data.details || data.error || 'Unknown error');
         alert(data.error || 'Failed to send test email');
       }
-    } catch (error) {
+    } catch (error: any) {
       setStatus('error');
       setErrorDetails('Network error or server not responding');
       alert('Failed to send test email');
@@ -47,9 +42,8 @@ export default function TestEmailPage() {
   const handleCheckEnv = async () => {
     setCheckingEnv(true);
     try {
-      const res = await fetch('/api/check-env');
-      const data = await res.json();
-      setEnvStatus(data);
+      const res = await axios.get('/api/check-env');
+      setEnvStatus(res.data);
     } catch (error) {
       setEnvStatus({ error: 'Failed to check environment' });
     } finally {

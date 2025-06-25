@@ -1,5 +1,6 @@
 'use client';
 import { useState } from "react";
+import axios from 'axios';
 
 export default function UploadProfile() {
   const [file, setFile] = useState<File | null>(null);
@@ -12,19 +13,17 @@ export default function UploadProfile() {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch("/api/upload-profile", {
-      method: "POST",
-      body: formData,
+    const res = await axios.post("/api/upload-profile", formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
 
-    const data = await res.json();
     setIsUploading(false);
 
-    if (res.ok) {
+    if (res.status === 200) {
       alert("Uploaded successfully!");
       window.location.reload(); // refresh to get new session image
     } else {
-      alert("Upload failed: " + data.error);
+      alert("Upload failed: " + res.data.error);
     }
   };
 
