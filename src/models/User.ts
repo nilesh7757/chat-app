@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema({
   verified: { type: Boolean, default: false },
   otp: String,
   otpExpiry: Date,
+  bio: { type: String, maxlength: 200 },
 }, { timestamps: true });
 
 export const User = mongoose.models.User || mongoose.model("User", userSchema);

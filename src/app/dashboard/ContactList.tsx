@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import axios from 'axios';
+import type { AxiosRequestConfig } from 'axios';
 
 interface Contact {
   email: string;
@@ -21,9 +22,10 @@ interface ContactListProps {
   contacts: Contact[];
   setContacts: React.Dispatch<React.SetStateAction<Contact[]>>;
   refreshTrigger?: number;
+  onContactSelect?: () => void;
 }
 
-export default function ContactList({ contacts, setContacts, refreshTrigger }: ContactListProps) {
+export default function ContactList({ contacts, setContacts, refreshTrigger, onContactSelect }: ContactListProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAddingContact, setIsAddingContact] = useState(false);
@@ -34,7 +36,7 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
   const fetchUserDetails = async (email: string): Promise<Contact> => {
     try {
       const response = await axios.get(`/api/user/${encodeURIComponent(email)}`);
-      return response.data;
+      return response.data as Contact;
     } catch (error) {
       console.error('Error fetching user details:', error);
       return {
@@ -50,7 +52,7 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
     try {
       console.log('Fetching unknown senders...');
       const response = await axios.get('/api/contacts/unknown-senders');
-      const data = response.data;
+      const data = response.data as { unknownSenders: UnknownSender[] };
       console.log('Unknown senders response:', data);
       setUnknownSenders(data.unknownSenders || []);
     } catch (error) {
@@ -144,6 +146,7 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
     const params = new URLSearchParams(searchParams);
     params.set('with', contactEmail);
     router.push(`/dashboard?${params.toString()}`);
+    if (onContactSelect) onContactSelect();
   };
 
   const deleteContact = async (contactEmail: string, e: React.MouseEvent) => {
@@ -154,7 +157,8 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
     }
 
     try {
-      const response = await axios.delete('/api/contacts/delete', { data: { contactEmail } });
+      const config: AxiosRequestConfig = { headers: { 'Content-Type': 'application/json' }, data: { contactEmail } };
+      const response = await axios.delete('/api/contacts/delete', config);
 
       if (response.status === 200) {
         // Remove from local state
@@ -167,7 +171,8 @@ export default function ContactList({ contacts, setContacts, refreshTrigger }: C
           router.push(`/dashboard?${params.toString()}`);
         }
       } else {
-        alert('Failed to delete contact: ' + response.data.error);
+        const data = response.data as { error?: string };
+        alert('Failed to delete contact: ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error deleting contact:', error);

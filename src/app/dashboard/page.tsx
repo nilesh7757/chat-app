@@ -7,6 +7,7 @@ import { getSession, signOut } from 'next-auth/react';
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import axios from 'axios';
+import EditProfileModal from './EditProfileModal';
 
 interface Contact {
   email: string;
@@ -23,6 +24,8 @@ export default function Page() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -131,10 +134,29 @@ export default function Page() {
   };
 
   return (
-    <div className="h-screen flex bg-gray-50">
-      {/* Left Sidebar - Contact List */}
-      <div className="w-80 lg:w-96 bg-white border-r border-gray-200 flex flex-col shadow-sm">
-        {/* Header with user profile */}
+    <div className="h-screen flex bg-gray-50 relative">
+      {/* Hamburger button for mobile */}
+      <button
+        className="absolute top-4 left-4 z-50 md:hidden p-2 rounded-full bg-white shadow-lg border border-gray-200 focus:outline-none"
+        onClick={() => setSidebarOpen(true)}
+        aria-label="Open contacts sidebar"
+        type="button"
+      >
+        <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      {/* Sidebar overlay for mobile */}
+      <div
+        className={`fixed inset-0 z-40 bg-black transition-opacity duration-500 ease-in-out md:hidden ${sidebarOpen ? 'opacity-40 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setSidebarOpen(false)}
+        aria-label="Close sidebar overlay"
+      />
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-80 max-w-full bg-white border-r border-gray-200 flex flex-col shadow-lg transition-transform duration-500 ease-in-out md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        {/* Header with user profile (copied from below) */}
         <div className="p-6 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4 flex-1">
@@ -156,23 +178,18 @@ export default function Page() {
                       {userProfile ? getInitials(userProfile.name) : 'U'}
                     </div>
                   )}
-                  
                   {/* Pencil icon overlay */}
                   <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
                   </div>
-                  
-                  {/* Loading overlay */}
                   {isUploading && (
                     <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     </div>
                   )}
                 </div>
-                
-                {/* Hidden file input */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -193,7 +210,17 @@ export default function Page() {
                 )}
               </div>
             </div>
-            
+            {/* Edit Profile Button */}
+            <button
+              className="ml-2 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200"
+              title="Edit Profile"
+              onClick={() => setEditProfileOpen(true)}
+              type="button"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
             {/* Sign Out Button */}
             <button
               onClick={handleSignOut}
@@ -206,8 +233,88 @@ export default function Page() {
             </button>
           </div>
         </div>
-        
-        {/* Contact List */}
+        <div className="flex-1 overflow-hidden">
+          <ContactList contacts={contacts} setContacts={setContacts} refreshTrigger={refreshTrigger} onContactSelect={() => setSidebarOpen(false)} />
+        </div>
+      </div>
+
+      {/* Desktop Sidebar */}
+      <div className="w-80 lg:w-96 bg-white border-r border-gray-200 flex-col shadow-sm hidden md:flex">
+        <div className="p-6 border-b border-gray-200 bg-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4 flex-1">
+              <div className="flex-shrink-0 relative group">
+                <div 
+                  className="cursor-pointer relative"
+                  onClick={handleProfileClick}
+                >
+                  {userProfile?.image ? (
+                    <Image
+                      src={userProfile.image}
+                      alt={userProfile.name}
+                      width={48}
+                      height={48}
+                      className="rounded-full object-cover ring-2 ring-gray-100"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm">
+                      {userProfile ? getInitials(userProfile.name) : 'U'}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </div>
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-semibold text-gray-900 truncate">
+                  {userProfile?.name || 'User'}
+                </p>
+                <p className="text-sm text-gray-500 truncate">
+                  {userProfile?.email || 'user@example.com'}
+                </p>
+                {isUploading && (
+                  <p className="text-xs text-blue-600 font-medium">Updating profile...</p>
+                )}
+              </div>
+            </div>
+            {/* Edit Profile Button */}
+            <button
+              className="ml-2 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200"
+              title="Edit Profile"
+              onClick={() => setEditProfileOpen(true)}
+              type="button"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+            {/* Sign Out Button */}
+            <button
+              onClick={handleSignOut}
+              className="ml-3 p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-200"
+              title="Sign Out"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          </div>
+        </div>
         <div className="flex-1 overflow-hidden">
           <ContactList contacts={contacts} setContacts={setContacts} refreshTrigger={refreshTrigger} />
         </div>
@@ -277,6 +384,14 @@ export default function Page() {
           </div>
         )}
       </div>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        open={editProfileOpen}
+        onClose={() => setEditProfileOpen(false)}
+        userProfile={userProfile}
+        onProfileUpdated={profile => setUserProfile(profile)}
+      />
     </div>
   );
 }
