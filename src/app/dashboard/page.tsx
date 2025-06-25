@@ -8,6 +8,9 @@ import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import axios from 'axios';
 import EditProfileModal from './EditProfileModal';
+import { Menu, Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import UserInfoBox from './UserInfoBox';
 
 interface Contact {
   email: string;
@@ -19,23 +22,37 @@ interface Contact {
 export default function Page() {
   const searchParams = useSearchParams();
   const targetEmail = searchParams.get('with');
-  const [userProfile, setUserProfile] = useState<{ name: string; email: string; image: string | null } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ name: string; email: string; image: string | null; bio: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [userInfoOpen, setUserInfoOpen] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       const session = await getSession();
       if (session?.user) {
-        setUserProfile({
-          name: session.user.name || 'User',
-          email: session.user.email || '',
-          image: session.user.image || null
-        });
+        // Fetch full user profile from API to get bio
+        try {
+          const res = await axios.get(`/api/user/${encodeURIComponent(session.user.email || '')}`);
+          const data = res.data as any;
+          setUserProfile({
+            name: data.name || 'User',
+            email: data.email || '',
+            image: data.image || null,
+            bio: data.bio ?? '',
+          });
+        } catch (err) {
+          setUserProfile({
+            name: session.user.name || 'User',
+            email: session.user.email || '',
+            image: session.user.image || null,
+            bio: '',
+          });
+        }
       }
     };
     fetchUserProfile();
@@ -45,7 +62,7 @@ export default function Page() {
     const fetchContacts = async () => {
       try {
         const response = await axios.get('/api/contacts');
-        setContacts(response.data.contacts || []);
+        setContacts((response.data as any).contacts || []);
       } catch (error) {
         console.error('Error fetching contacts:', error);
       }
@@ -63,7 +80,7 @@ export default function Page() {
   };
 
   const handleProfileClick = () => {
-    fileInputRef.current?.click();
+    setUserInfoOpen(true);
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,7 +96,7 @@ export default function Page() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      setUserProfile(prev => prev ? { ...prev, image: response.data.image } : null);
+      setUserProfile(prev => prev ? { ...prev, image: (response.data as any).image } : null);
       window.location.reload();
     } catch (error: any) {
       alert('Upload failed: ' + (error.response?.data?.error || 'Network error'));
@@ -116,7 +133,7 @@ export default function Page() {
   const refreshContacts = async () => {
     try {
       const response = await axios.get('/api/contacts');
-      setContacts(response.data.contacts || []);
+      setContacts((response.data as any).contacts || []);
     } catch (error) {
       console.error('Error refreshing contacts:', error);
     }
@@ -136,16 +153,16 @@ export default function Page() {
   return (
     <div className="h-screen flex bg-gray-50 relative">
       {/* Hamburger button for mobile */}
-      <button
+      <Button
         className="absolute top-4 left-4 z-50 md:hidden p-2 rounded-full bg-white shadow-lg border border-gray-200 focus:outline-none"
         onClick={() => setSidebarOpen(true)}
         aria-label="Open contacts sidebar"
         type="button"
+        variant="ghost"
+        size="icon"
       >
-        <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+        <Menu className="w-6 h-6 text-gray-700" />
+      </Button>
 
       {/* Sidebar overlay for mobile */}
       <div
@@ -180,9 +197,7 @@ export default function Page() {
                   )}
                   {/* Pencil icon overlay */}
                   <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <Pencil className="w-5 h-5 text-white" />
                   </div>
                   {isUploading && (
                     <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
@@ -262,9 +277,7 @@ export default function Page() {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <Pencil className="w-5 h-5 text-white" />
                   </div>
                   {isUploading && (
                     <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
@@ -390,8 +403,32 @@ export default function Page() {
         open={editProfileOpen}
         onClose={() => setEditProfileOpen(false)}
         userProfile={userProfile}
-        onProfileUpdated={profile => setUserProfile(profile)}
+        onProfileUpdated={async profile => {
+          // Refetch full user profile to ensure bio is up to date
+          try {
+            const res = await axios.get(`/api/user/${encodeURIComponent(profile.email || '')}`);
+            const data = res.data as any;
+            setUserProfile({
+              name: data.name || 'User',
+              email: data.email || '',
+              image: data.image || null,
+              bio: data.bio ?? '',
+            });
+          } catch {
+            setUserProfile({
+              name: profile.name,
+              email: profile.email,
+              image: profile.image,
+              bio: profile.bio ?? '',
+            });
+          }
+        }}
       />
+
+      {/* User Info Modal */}
+      {userProfile && (
+        <UserInfoBox open={userInfoOpen} onClose={() => setUserInfoOpen(false)} user={userProfile} />
+      )}
     </div>
   );
 }

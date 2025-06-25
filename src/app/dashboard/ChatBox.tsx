@@ -6,6 +6,8 @@ import Image from "next/image"
 import type React from "react"
 import axios from "axios"
 import UserInfoBox from './UserInfoBox'
+import { Image as ImageIcon, FileText, FileType2, FileSpreadsheet, Presentation, FileArchive, File, X, Paperclip } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface ChatContact {
   email: string
@@ -72,80 +74,19 @@ export default function ChatBox({
 
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith("image/")) {
-      return (
-        <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-          />
-        </svg>
-      )
+      return <ImageIcon className="w-5 h-5 text-blue-500" />
     } else if (fileType === "application/pdf") {
-      return (
-        <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-          />
-        </svg>
-      )
+      return <FileText className="w-5 h-5 text-red-500" />
     } else if (fileType.includes("word") || fileType.includes("document")) {
-      return (
-        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
-      )
+      return <FileType2 className="w-5 h-5 text-blue-600" />
     } else if (fileType.includes("excel") || fileType.includes("spreadsheet")) {
-      return (
-        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-          />
-        </svg>
-      )
+      return <FileSpreadsheet className="w-5 h-5 text-green-600" />
     } else if (fileType.includes("powerpoint") || fileType.includes("presentation")) {
-      return (
-        <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9" />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M16 4h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"
-          />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h8v4H8z" />
-        </svg>
-      )
+      return <Presentation className="w-5 h-5 text-orange-600" />
     } else if (fileType.includes("zip") || fileType.includes("rar")) {
-      return (
-        <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <rect x="3" y="7" width="18" height="13" rx="2" strokeWidth={2} stroke="currentColor" fill="none" />
-          <path d="M16 3v4M8 3v4M12 3v4" strokeWidth={2} stroke="currentColor" fill="none" />
-        </svg>
-      )
+      return <FileArchive className="w-5 h-5 text-yellow-600" />
     } else {
-      return (
-        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
-      )
+      return <File className="w-5 h-5 text-gray-500" />
     }
   }
 

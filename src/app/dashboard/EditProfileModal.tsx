@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
+import { X, Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface EditProfileModalProps {
   open: boolean;
@@ -74,15 +76,15 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 relative animate-fadeIn">
-        <button
+        <Button
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"
           onClick={onClose}
           aria-label="Close"
+          variant="ghost"
+          size="icon"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+          <X className="w-6 h-6" />
+        </Button>
         <h2 className="text-xl font-bold mb-6 text-center">Edit Profile</h2>
         <div className="flex flex-col items-center mb-6">
           <div className="relative group">
@@ -99,16 +101,16 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
                 {userProfile?.name ? userProfile.name[0].toUpperCase() : 'U'}
               </div>
             )}
-            <button
+            <Button
               className="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full p-2 shadow-lg hover:bg-blue-700 focus:outline-none"
               onClick={() => fileInputRef.current?.click()}
               title="Change photo"
               type="button"
+              variant="secondary"
+              size="icon"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
+              <Pencil className="w-4 h-4" />
+            </Button>
             <input
               ref={fileInputRef}
               type="file"
@@ -141,13 +143,13 @@ export default function EditProfileModal({ open, onClose, userProfile, onProfile
           />
         </div>
         {error && <div className="text-red-600 text-sm mb-2 text-center">{error}</div>}
-        <button
+        <Button
           className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleSave}
           disabled={isSaving || !name.trim()}
         >
           {isSaving ? 'Saving...' : 'Save Changes'}
-        </button>
+        </Button>
       </div>
     </div>
   );

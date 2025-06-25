@@ -15,7 +15,7 @@ export async function GET(
     const { email } = await params;
     const decodedEmail = decodeURIComponent(email);
     
-    const user = await User.findOne({ email: decodedEmail }).select('name email image');
+    const user = await User.findOne({ email: decodedEmail }).select('name email image bio');
     
     if (!user) {
       return NextResponse.json({ 
@@ -30,7 +30,8 @@ export async function GET(
       found: true,
       email: user.email,
       name: user.name,
-      image: user.image
+      image: user.image,
+      bio: user.bio
     });
     
   } catch (error) {
