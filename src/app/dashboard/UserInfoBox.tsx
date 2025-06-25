@@ -11,7 +11,7 @@ export default function UserInfoBox({ open, onClose, user }: UserInfoBoxProps) {
   return (
     <div
       className={`fixed top-0 left-0 w-full z-50 flex justify-center transition-transform duration-500 ease-in-out ${open ? 'translate-y-0' : '-translate-y-full'}`}
-      style={{ pointerEvents: open ? 'auto' : 'none' }}
+      style={{ pointerEvents: open ? 'auto' : 'none', display: open ? undefined : 'none' }}
     >
       <div className="bg-white shadow-xl rounded-b-2xl w-full max-w-lg mx-auto mt-0 p-8 relative border-b border-gray-200">
         <button
