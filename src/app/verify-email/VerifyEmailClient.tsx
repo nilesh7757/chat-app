@@ -14,14 +14,6 @@ export default function VerifyEmailClient() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Auto-send OTP on page load
-  useEffect(() => {
-    if (email && initialLoad) {
-      handleResend(true); // Silent initial send
-      setInitialLoad(false);
-    }
-  }, [email, initialLoad]);
-
   // Cooldown timer
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -40,19 +32,16 @@ export default function VerifyEmailClient() {
     setStatus(null);
     
     try {
-      console.log('🔐 Verifying OTP for:', email);
       const res = await axios.post("/api/auth/verify-otp", { email, otp });
       const data = res.data as { success?: boolean; error?: string };
       
       if (data.success) {
-        console.log('✅ OTP verified successfully');
         setStatus("success");
       } else {
-        console.log('❌ OTP verification failed:', data.error);
-        setStatus(data.error || "Verification failed");
+        const errorMessage = data.error || "Verification failed";
+        setStatus(errorMessage);
       }
     } catch (error: any) {
-      console.error('❌ Verification error:', error);
       const errorMessage = error.response?.data?.error || "Network error. Please try again.";
       setStatus(errorMessage);
     } finally {
@@ -67,12 +56,10 @@ export default function VerifyEmailClient() {
     if (!silent) setStatus(null);
     
     try {
-      console.log('📧 Resending OTP to:', email);
       const res = await axios.post("/api/auth/send-otp", { email });
       const data = res.data as { success?: boolean; error?: string; details?: string };
       
       if (data.success) {
-        console.log('✅ OTP resent successfully');
         if (!silent) {
           setResent(true);
           setStatus("OTP sent to your email successfully.");
@@ -81,17 +68,10 @@ export default function VerifyEmailClient() {
         }
         setResendCooldown(60); // 60 second cooldown
       } else {
-        console.log('❌ OTP resend failed:', data.error);
         const errorMessage = data.error || "Failed to send OTP";
         setStatus(errorMessage);
-        
-        // If it's a configuration error, provide helpful guidance
-        if (errorMessage.includes('configuration') || errorMessage.includes('service')) {
-          setStatus(errorMessage + " Please contact support or try again later.");
-        }
       }
     } catch (error: any) {
-      console.error('❌ Resend error:', error);
       const errorMessage = error.response?.data?.error || "Network error. Please try again.";
       setStatus(errorMessage);
     } finally {
@@ -182,18 +162,6 @@ export default function VerifyEmailClient() {
             ) : (
               <div>
                 <p className="text-sm">{status}</p>
-                {status.includes('configuration') && (
-                  <div className="mt-3 text-xs">
-                    <a 
-                      href="/test-email" 
-                      className="text-blue-600 hover:text-blue-800 underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Test email configuration →
-                    </a>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -215,7 +183,6 @@ export default function VerifyEmailClient() {
           
           <div className="text-xs text-gray-500">
             <p>Didn't receive the email? Check your spam folder.</p>
-            <p>Still having issues? <a href="/test-email" className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer">Test email setup</a></p>
           </div>
         </div>
       </div>

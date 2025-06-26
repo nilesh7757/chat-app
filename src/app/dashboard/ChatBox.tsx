@@ -134,7 +134,6 @@ export default function ChatBox({
         found: userData.found !== undefined ? userData.found : true,
       }
     } catch (error) {
-      console.error("Error fetching contact details:", error)
       return {
         email,
         name: email.split("@")[0],
@@ -154,14 +153,8 @@ export default function ChatBox({
       const contactDetails = await fetchContactDetails(email)
       onAddContact(contactDetails)
       const response = await axios.post("/api/contacts/add", { contactEmail: email })
-      if (response.status === 200) {
-        console.log("Contact added to database")
-      } else {
-        console.error("Failed to add contact to database")
-      }
       setHasAddedContact(true)
     } catch (error) {
-      console.error("Error adding contact:", error)
     }
   }
 
@@ -178,13 +171,11 @@ export default function ChatBox({
     const connect = async () => {
       const session = await getSession()
       if (!session?.user?.email) {
-        console.log("❌ No session or user email found")
         return
       }
 
       const self = session.user.email
       selfEmailRef.current = self
-      console.log("🔗 Connecting to WebSocket for user:", self)
 
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001"
       const socket = new WebSocket(wsUrl)
@@ -192,67 +183,41 @@ export default function ChatBox({
 
       socket.onopen = () => {
         setIsSocketConnected(true)
-        console.log("🔗 WebSocket connected successfully")
-        const joinMessage = { type: "join", self, target: targetEmail }
-        console.log("📤 Sending join message:", joinMessage)
-        socket.send(JSON.stringify(joinMessage))
       }
 
       socket.onerror = (error) => {
         setIsSocketConnected(false)
-        console.error("❌ WebSocket error:", error)
       }
 
       socket.onclose = (event) => {
         setIsSocketConnected(false)
-        console.log("🔌 WebSocket disconnected:", event.code, event.reason)
       }
 
       socket.onmessage = (event) => {
-        console.log("📥 Received WebSocket message:", event.data)
         const msg = JSON.parse(event.data)
-        console.log("📥 Parsed message:", msg)
 
         if (msg.type === "chat") {
-          console.log("💬 Processing chat message:", msg)
           setMessages((prev) => {
-            console.log("📝 Current messages count:", prev.length)
             const isDuplicate = prev.some((m) => {
               if (m.file && msg.file) {
                 const timeDiff = Math.abs(new Date(m.createdAt || 0).getTime() - new Date(msg.createdAt || 0).getTime())
                 const isDuplicateFile = m.file.url === msg.file.url && m.from === msg.from && timeDiff < 2000
-                console.log(`🔍 File message duplicate check:`, {
-                  urlMatch: m.file.url === msg.file.url,
-                  senderMatch: m.from === msg.from,
-                  timeDiff,
-                  isDuplicate: isDuplicateFile,
-                })
                 if (isDuplicateFile) return true
               }
               if (m.text && msg.text) {
                 const timeDiff = Math.abs(new Date(m.createdAt || 0).getTime() - new Date(msg.createdAt || 0).getTime())
                 const isDuplicateText = m.text === msg.text && m.from === msg.from && timeDiff < 2000
-                console.log(`🔍 Text message duplicate check:`, {
-                  textMatch: m.text === msg.text,
-                  senderMatch: m.from === msg.from,
-                  timeDiff,
-                  isDuplicate: isDuplicateText,
-                })
                 if (isDuplicateText) return true
               }
               return false
             })
 
             if (isDuplicate) {
-              console.log("🔄 Duplicate message detected, skipping")
               return prev
             }
 
-            console.log("✅ Adding new message to chat")
             const newMessages = [...prev, msg]
-            console.log("📝 New messages count:", newMessages.length)
 
-            // If this is a message to me, send delivered
             if (msg.from !== selfEmailRef.current && msg._id) {
               sendStatusUpdate('delivered', msg._id);
             }
@@ -261,9 +226,7 @@ export default function ChatBox({
           })
         }
         if (msg.type === "history") {
-          console.log("📚 Loading chat history:", msg.messages.length, "messages")
           setMessages(msg.messages)
-          // For all messages not from me and not seen, send delivered
           msg.messages.forEach((m: any) => {
             if (m.from !== selfEmailRef.current && m.status !== 'delivered' && m.status !== 'seen' && m._id) {
               sendStatusUpdate('delivered', m._id);
@@ -271,7 +234,6 @@ export default function ChatBox({
           });
         }
         if (msg.type === "contact_added") {
-          console.log("👥 Contact added notification:", msg.message)
           setContactNotification(msg.message)
           setTimeout(() => setContactNotification(null), 3000)
           if (onRefreshContacts) {
@@ -279,7 +241,6 @@ export default function ChatBox({
           }
         }
         if (msg.type === "unknown_message") {
-          console.log("❓ Unknown message notification:", msg)
           setContactNotification(`New message from ${msg.fromName || msg.from}`)
           setTimeout(() => setContactNotification(null), 5000)
           if (onUnknownMessage) {
@@ -287,8 +248,6 @@ export default function ChatBox({
           }
         }
         if (msg.type === "status") {
-          console.log("📊 Status update:", msg)
-          // Update contact status if it matches the current contact
           if (msg.email === targetEmail) {
             setContact(prev => prev ? {
               ...prev,
@@ -298,7 +257,6 @@ export default function ChatBox({
           }
         }
         if (msg.type === "status_update") {
-          // { type: 'status_update', messageId, status }
           setMessages((prev) => prev.map((m: any) =>
             m._id === msg.messageId ? { ...m, status: msg.status } : m
           ));
@@ -309,7 +267,6 @@ export default function ChatBox({
     connect()
     return () => {
       setIsSocketConnected(false)
-      console.log("🧹 Cleaning up WebSocket connection")
       if (socketRef.current) {
         socketRef.current.close()
       }
@@ -347,7 +304,6 @@ export default function ChatBox({
       setEditingText("")
     } catch (err) {
       toast.error("Failed to edit message")
-      console.error(err)
     }
   }
 
@@ -387,7 +343,6 @@ export default function ChatBox({
       setMessages((prev) => prev.filter((m: any) => m._id !== msgId))
     } catch (err) {
       toast.error("Failed to delete message")
-      console.error(err)
     } finally {
       setDeletingMessageIds((prev) => prev.filter((id) => id !== msgId))
     }
@@ -395,13 +350,10 @@ export default function ChatBox({
 
   const handleFileDownload = async (fileUrl: string | undefined, fileName: string) => {
     if (!fileUrl) {
-      console.error("No file URL provided")
       return
     }
 
     try {
-      console.log("🔽 Starting download:", { fileUrl, fileName })
-
       let downloadUrl = fileUrl
       if (fileUrl.includes("res.cloudinary.com")) {
         if (fileUrl.includes("/raw/upload/")) {
@@ -412,8 +364,6 @@ export default function ChatBox({
           downloadUrl = fileUrl.replace("/upload/", "/upload/fl_attachment/")
         }
       }
-
-      console.log("🔽 Download URL:", downloadUrl)
 
       try {
         const response = await fetch(downloadUrl)
@@ -434,11 +384,7 @@ export default function ChatBox({
         document.body.removeChild(link)
 
         window.URL.revokeObjectURL(url)
-
-        console.log("✅ Download completed successfully")
       } catch (fetchError) {
-        console.warn("⚠️ Fetch download failed, trying fallback method:", fetchError)
-
         const link = document.createElement("a")
         link.href = downloadUrl
         link.download = fileName
@@ -448,11 +394,8 @@ export default function ChatBox({
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-
-        console.log("✅ Fallback download method used")
       }
     } catch (error) {
-      console.error("❌ Download failed:", error)
       toast.error("Download failed. Please try again or contact support.")
     }
   }
@@ -527,7 +470,6 @@ export default function ChatBox({
         }
       } catch (error) {
         toast.error("File upload failed. Please try again.")
-        console.error(error)
       } finally {
         setIsUploadingFile(false)
         setPendingFile(null)
@@ -551,8 +493,6 @@ export default function ChatBox({
     }
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify(wsMsg))
-    } else {
-      console.error("❌ WebSocket not connected, cannot send message")
     }
     setMessage("")
     setPendingFile(null)

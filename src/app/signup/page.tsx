@@ -178,22 +178,6 @@ export default function SignUpPage() {
             </a>
           </p>
         </div>
-
-        {/* Email configuration help */}
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-          <h4 className="text-sm font-semibold text-blue-800 mb-2">Having trouble with email verification?</h4>
-          <p className="text-xs text-blue-700 mb-2">
-            If you don't receive the OTP email, it might be a configuration issue.
-          </p>
-          <a 
-            href="/test-email" 
-            className="text-xs text-blue-600 hover:text-blue-800 underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Test email configuration →
-          </a>
-        </div>
       </div>
     </div>
   );
