@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { getSession } from "next-auth/react"
 import Image from "next/image"
-import type React from "react"
+import React from "react"
 import axios from "axios"
 import UserInfoBox from './UserInfoBox'
 import { Image as ImageIcon, FileText, FileType2, FileSpreadsheet, Presentation, FileArchive, File, X, Paperclip, Send, Mic, Smile, Check, CheckCheck } from "lucide-react"
@@ -715,7 +715,7 @@ export default function ChatBox({
   return (
     <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" style={{height: '100dvh'}}>
       {/* Header */}
-      <div className="bg-white/90 backdrop-blur border-b border-white/30 shadow-sm px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 sticky top-0 z-10">
+      <div className="bg-white/90 backdrop-blur border-b border-white/30 shadow-sm py-3 sm:py-4 flex items-center gap-3 sm:gap-4 sticky top-0 z-10">
         <div className="flex-shrink-0">
           {contact?.image ? (
             <Image
@@ -797,7 +797,7 @@ export default function ChatBox({
       {/* Messages */}
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-2 sm:px-6 py-4 space-y-3 sm:space-y-4"
+        className="flex-1 overflow-y-auto py-4 space-y-3 sm:space-y-4"
         style={{ 
           paddingBottom: isInputFocused ? '20px' : '10px',
           scrollBehavior: 'smooth'
@@ -814,7 +814,7 @@ export default function ChatBox({
             <p className="text-sm sm:text-base text-gray-500 max-w-sm">Start the conversation by sending a message!</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 sm:gap-4 max-w-2xl mx-auto">
+          <div className="flex flex-col gap-3 sm:gap-4 max-w-full sm:mx-3 mx-auto">
             {messages.map((msg, i) => {
               const isOwnMessage = msg.from === selfEmailRef.current
               const isDeleting = deletingMessageIds.includes((msg as any)._id)
@@ -932,7 +932,7 @@ export default function ChatBox({
       </div>
 
       {/* Input Area */}
-      <div className="bg-white/90 backdrop-blur border-t border-white/30 shadow-lg px-3 sm:px-6 py-3 sm:py-4 sticky bottom-0 z-40">
+      <div className="bg-white/90 backdrop-blur border-t border-white/30 shadow-lg py-3 sm:py-4 sticky bottom-0 z-40">
         <div className="flex items-end gap-2 sm:gap-3">
           <button
             type="button"
