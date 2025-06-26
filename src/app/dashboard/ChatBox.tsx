@@ -6,7 +6,7 @@ import Image from "next/image"
 import type React from "react"
 import axios from "axios"
 import UserInfoBox from './UserInfoBox'
-import { Image as ImageIcon, FileText, FileType2, FileSpreadsheet, Presentation, FileArchive, File, X, Paperclip, Send, Mic, Smile } from "lucide-react"
+import { Image as ImageIcon, FileText, FileType2, FileSpreadsheet, Presentation, FileArchive, File, X, Paperclip, Send, Mic, Smile, Check, CheckCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from 'react-toastify'
 
@@ -38,6 +38,7 @@ interface ChatMessage {
     size?: number
   }
   createdAt?: string | Date
+  status?: string
 }
 
 export default function ChatBox({
@@ -247,12 +248,24 @@ export default function ChatBox({
             console.log("✅ Adding new message to chat")
             const newMessages = [...prev, msg]
             console.log("📝 New messages count:", newMessages.length)
+
+            // If this is a message to me, send delivered
+            if (msg.from !== selfEmailRef.current && msg._id) {
+              sendStatusUpdate('delivered', msg._id);
+            }
+
             return newMessages
           })
         }
         if (msg.type === "history") {
           console.log("📚 Loading chat history:", msg.messages.length, "messages")
           setMessages(msg.messages)
+          // For all messages not from me and not seen, send delivered
+          msg.messages.forEach((m: any) => {
+            if (m.from !== selfEmailRef.current && m.status !== 'delivered' && m.status !== 'seen' && m._id) {
+              sendStatusUpdate('delivered', m._id);
+            }
+          });
         }
         if (msg.type === "contact_added") {
           console.log("👥 Contact added notification:", msg.message)
@@ -280,6 +293,12 @@ export default function ChatBox({
               lastSeen: msg.lastSeen ? new Date(msg.lastSeen) : prev.lastSeen
             } : prev)
           }
+        }
+        if (msg.type === "status_update") {
+          // { type: 'status_update', messageId, status }
+          setMessages((prev) => prev.map((m: any) =>
+            m._id === msg.messageId ? { ...m, status: msg.status } : m
+          ));
         }
       }
     }
@@ -535,7 +554,7 @@ export default function ChatBox({
     }, 100);
   }
 
-  // Helper for long press
+  // Helper for long press and tap (mobile)
   const handleTouchStart = (msgId: string) => {
     if (window.innerWidth >= 768) return; // Only for mobile
     longPressTimeout.current = setTimeout(() => {
@@ -549,6 +568,13 @@ export default function ChatBox({
     }
   };
   const handleOverlayClose = () => setLongPressedMsgId(null);
+
+  // NEW: Mobile tap handler to show Edit/Delete
+  const handleMobileTap = (msgId: string) => {
+    if (window.innerWidth < 768) {
+      setLongPressedMsgId((prev) => (prev === msgId ? null : msgId));
+    }
+  };
 
   // Mobile-specific handlers
   const handleInputFocus = () => {
@@ -666,6 +692,34 @@ export default function ChatBox({
     return date.toLocaleString()
   }
 
+  // Helper to send delivered/seen events
+  const sendStatusUpdate = (type: 'delivered' | 'seen', messageId: string) => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type, messageId }));
+    }
+  };
+
+  // Send 'seen' for all messages not from me and not seen when chat is open or messages change
+  useEffect(() => {
+    messages.forEach((m: any) => {
+      if (m.from !== selfEmailRef.current && m.status !== 'seen' && m._id) {
+        sendStatusUpdate('seen', m._id);
+      }
+    });
+  }, [messages]);
+
+  // Helper to render ticks
+  function renderTicks(status: string) {
+    if (status === 'seen') {
+      return <span title="Seen"><CheckCheck className="w-4 h-4 text-blue-500 inline align-middle" /></span>;
+    }
+    if (status === 'delivered') {
+      return <span title="Delivered"><CheckCheck className="w-4 h-4 text-gray-400 inline align-middle" /></span>;
+    }
+    // sent or undefined
+    return <span title="Sent"><Check className="w-4 h-4 text-gray-400 inline align-middle" /></span>;
+  }
+
   return (
     <div 
       className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"
@@ -758,6 +812,7 @@ export default function ChatBox({
                     } ${isDeleting ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100"}`}
                     onTouchStart={isOwnMessage ? () => handleTouchStart((msg as any)._id) : undefined}
                     onTouchEnd={isOwnMessage ? handleTouchEnd : undefined}
+                    onClick={isOwnMessage ? () => handleMobileTap((msg as any)._id) : undefined}
                   >
                     {/* Edit/Delete buttons for desktop */}
                     {isOwnMessage && (
@@ -892,6 +947,9 @@ export default function ChatBox({
                         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                       })()}
                     </span>
+                  )}
+                  {isOwnMessage && (
+                    <span className="ml-1 align-middle">{renderTicks((msg as any).status)}</span>
                   )}
                 </div>
               )

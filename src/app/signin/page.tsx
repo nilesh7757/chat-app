@@ -39,17 +39,7 @@ export default function SignInPage() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      const res = await signIn("google", {
-        callbackUrl: "/dashboard",
-        redirect: false,
-      });
-      if (res?.ok) {
-        router.push("/dashboard");
-      } else if (res?.error) {
-        toast.error(res.error || "Google sign in failed");
-      } else {
-        toast.error("Google sign in failed");
-      }
+      await signIn("google", { callbackUrl: "/dashboard" });
     } catch (error) {
       toast.error("An error occurred during Google sign in");
     } finally {
