@@ -156,7 +156,7 @@ export default function Page() {
 
       {/* Hamburger button for mobile */}
       <Button
-        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-full bg-white shadow-lg border border-gray-200 focus:outline-none"
+        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-full bg-white shadow-lg border border-gray-200 focus:outline-none active:scale-95 touch-feedback"
         onClick={() => setSidebarOpen(true)}
         aria-label="Open contacts sidebar"
         type="button"
@@ -168,49 +168,49 @@ export default function Page() {
 
       {/* Sidebar overlay for mobile */}
       <div
-        className={`fixed inset-0 z-40 bg-black transition-opacity duration-500 ease-in-out md:hidden ${sidebarOpen ? 'opacity-40 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-40 bg-black transition-opacity duration-300 ease-in-out md:hidden ${sidebarOpen ? 'opacity-40 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setSidebarOpen(false)}
         aria-label="Close sidebar overlay"
       />
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-80 max-w-full bg-white border-r border-gray-200 flex flex-col shadow-lg transition-transform duration-500 ease-in-out md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] bg-white border-r border-gray-200 flex flex-col shadow-xl transition-transform duration-300 ease-in-out md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         {/* Header with user profile (copied from below) */}
-        <div className="p-6 border-b border-gray-200 bg-white flex items-center justify-between">
-          <div className="flex items-center gap-4 w-full">
+        <div className="p-4 sm:p-6 border-b border-gray-200 bg-white flex items-center justify-between safe-area-top">
+          <div className="flex items-center gap-3 sm:gap-4 w-full">
             <div className="flex-shrink-0">
               {userProfile?.image ? (
                 <Image
                   src={userProfile.image}
                   alt={userProfile.name}
-                  width={48}
-                  height={48}
-                  className="rounded-full object-cover ring-2 ring-gray-100"
+                  width={40}
+                  height={40}
+                  className="rounded-full object-cover ring-2 ring-gray-100 sm:w-12 sm:h-12"
                 />
               ) : (
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-base sm:text-lg shadow-sm">
                   {userProfile ? getInitials(userProfile.name) : 'U'}
                 </div>
               )}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="font-semibold text-gray-900 text-base leading-tight truncate">{userProfile?.name || 'User'}</span>
-              <span className="text-gray-500 text-sm truncate">{userProfile?.email}</span>
+              <span className="font-semibold text-gray-900 text-sm sm:text-base leading-tight truncate">{userProfile?.name || 'User'}</span>
+              <span className="text-gray-500 text-xs sm:text-sm truncate">{userProfile?.email}</span>
             </div>
             <button
-              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200"
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200 active:scale-95 touch-feedback"
               title="Edit Profile"
               onClick={() => setEditProfileOpen(true)}
               type="button"
             >
-              <Pencil className="w-5 h-5" />
+              <Pencil className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button
               onClick={handleSignOut}
-              className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-200"
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-200 active:scale-95 touch-feedback"
               title="Sign Out"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
             </button>
@@ -279,17 +279,17 @@ export default function Page() {
               onUnknownMessage={refreshUnknownSenders}
             />
           ) : (
-            <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-              <div className="text-center max-w-md mx-auto px-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4">
+              <div className="text-center max-w-md mx-auto">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                  <svg className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Not in contacts</h3>
-                <p className="text-gray-600 mb-6 leading-relaxed">This user is not in your contacts yet. Add them to start chatting and stay connected.</p>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">Not in contacts</h3>
+                <p className="text-sm sm:text-base text-gray-600 mb-6 leading-relaxed">This user is not in your contacts yet. Add them to start chatting and stay connected.</p>
                 <button
-                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium shadow-sm"
+                  className="px-6 sm:px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium shadow-sm active:scale-95 touch-feedback"
                   onClick={async () => {
                     // Add the user to contacts
                     await handleAddContact({
@@ -306,17 +306,17 @@ export default function Page() {
             </div>
           )
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-            <div className="text-center max-w-md mx-auto px-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4">
+            <div className="text-center max-w-md mx-auto">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                <svg className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Welcome to Chat</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">Select a contact from the sidebar to start chatting, or add new contacts to begin conversations.</p>
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">Welcome to Chat</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-6 leading-relaxed">Select a contact from the sidebar to start chatting, or add new contacts to begin conversations.</p>
               <button
-                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 sm:px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 touch-feedback"
                 onClick={() => {
                   if (contacts.length > 0) {
                     const params = new URLSearchParams(window.location.search);

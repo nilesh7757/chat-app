@@ -21,4 +21,181 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* Mobile-specific improvements */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent zoom on input focus on iOS */
+  -webkit-text-size-adjust: 100%;
+  /* Improve touch scrolling */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent horizontal scroll */
+  overflow-x: hidden;
+}
+
+/* Mobile-specific improvements */
+* {
+  /* Improve touch targets */
+  touch-action: manipulation;
+}
+
+/* Better input handling on mobile */
+input, textarea, select {
+  /* Prevent zoom on iOS */
+  font-size: 16px;
+  /* Improve touch interaction */
+  -webkit-appearance: none;
+  border-radius: 0;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Mobile-specific button improvements */
+button {
+  /* Prevent text selection on buttons */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Improve touch feedback */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Improve focus states for accessibility */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Mobile-specific animations */
+@media (max-width: 768px) {
+  /* Smooth transitions for mobile */
+  .mobile-transition {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Improve touch feedback */
+  .touch-feedback:active {
+    transform: scale(0.95);
+  }
+  
+  /* Better loading states */
+  .mobile-loading {
+    animation: mobile-pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes mobile-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Prevent text selection on interactive elements */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Improve mobile keyboard handling */
+.mobile-input {
+  /* Prevent zoom on iOS */
+  font-size: 16px;
+  /* Better touch interaction */
+  -webkit-appearance: none;
+  border-radius: 8px;
+}
+
+/* Mobile-specific safe areas */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Mobile-specific toast styling */
+.mobile-toast {
+  border-radius: 12px !important;
+  margin: 8px !important;
+  font-size: 14px !important;
+  max-width: calc(100vw - 16px) !important;
+}
+
+/* Mobile-specific improvements for react-toastify */
+@media (max-width: 768px) {
+  .Toastify__toast-container {
+    padding: 0 8px !important;
+  }
+  
+  .Toastify__toast {
+    border-radius: 12px !important;
+    margin-bottom: 8px !important;
+    font-size: 14px !important;
+    padding: 12px 16px !important;
+  }
+  
+  .Toastify__toast-body {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .Toastify__close-button {
+    padding: 0 !important;
+    margin-left: 8px !important;
+  }
+}
+
+/* Mobile-specific input improvements */
+@media (max-width: 768px) {
+  input[type="text"], 
+  input[type="email"], 
+  input[type="password"],
+  textarea {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+  
+  /* Better touch targets */
+  button, 
+  [role="button"] {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  /* Improve scrolling performance */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
 }

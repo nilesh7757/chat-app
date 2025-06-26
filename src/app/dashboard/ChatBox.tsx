@@ -6,7 +6,7 @@ import Image from "next/image"
 import type React from "react"
 import axios from "axios"
 import UserInfoBox from './UserInfoBox'
-import { Image as ImageIcon, FileText, FileType2, FileSpreadsheet, Presentation, FileArchive, File, X, Paperclip } from "lucide-react"
+import { Image as ImageIcon, FileText, FileType2, FileSpreadsheet, Presentation, FileArchive, File, X, Paperclip, Send, Mic, Smile } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from 'react-toastify'
 
@@ -70,6 +70,16 @@ export default function ChatBox({
   const [deletingMessageIds, setDeletingMessageIds] = useState<string[]>([])
   const [longPressedMsgId, setLongPressedMsgId] = useState<string | null>(null)
   const longPressTimeout = useRef<NodeJS.Timeout | null>(null)
+  
+  // Mobile-specific states
+  const [isInputFocused, setIsInputFocused] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [isTyping, setIsTyping] = useState(false)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const [swipeStartX, setSwipeStartX] = useState<number | null>(null)
+  const [swipeStartY, setSwipeStartY] = useState<number | null>(null)
 
   const getInitials = (name: string) => {
     return name
@@ -260,6 +270,17 @@ export default function ChatBox({
             onUnknownMessage()
           }
         }
+        if (msg.type === "status") {
+          console.log("📊 Status update:", msg)
+          // Update contact status if it matches the current contact
+          if (msg.email === targetEmail) {
+            setContact(prev => prev ? {
+              ...prev,
+              isOnline: msg.isOnline,
+              lastSeen: msg.lastSeen ? new Date(msg.lastSeen) : prev.lastSeen
+            } : prev)
+          }
+        }
       }
     }
 
@@ -448,6 +469,10 @@ export default function ChatBox({
   // Send message function (must be above usage)
   const sendMessage = async (text?: string, fileObj?: { url: string; name: string; type: string; size?: number }) => {
     if ((!text || !text.trim()) && !fileObj && !pendingFile) return
+    
+    // Clear typing indicator
+    setIsTyping(false)
+    
     // If there is a pending file, upload it first
     if (pendingFile && !fileObj) {
       setIsUploadingFile(true)
@@ -503,6 +528,11 @@ export default function ChatBox({
     setMessage("")
     setPendingFile(null)
     setPendingFilePreview(null)
+    
+    // Scroll to bottom after sending
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   }
 
   // Helper for long press
@@ -520,6 +550,109 @@ export default function ChatBox({
   };
   const handleOverlayClose = () => setLongPressedMsgId(null);
 
+  // Mobile-specific handlers
+  const handleInputFocus = () => {
+    setIsInputFocused(true);
+    // Scroll to bottom when input is focused
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 300);
+  };
+
+  const handleInputBlur = () => {
+    setIsInputFocused(false);
+    setShowEmojiPicker(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+    setIsTyping(true);
+    // Clear typing indicator after 2 seconds of no typing
+    setTimeout(() => setIsTyping(false), 2000);
+  };
+
+  // Swipe gesture handlers
+  const handleTouchStartSwipe = (e: React.TouchEvent) => {
+    setSwipeStartX(e.touches[0].clientX);
+    setSwipeStartY(e.touches[0].clientY);
+  };
+
+  const handleTouchMoveSwipe = (e: React.TouchEvent) => {
+    if (swipeStartX === null || swipeStartY === null) return;
+    
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = swipeStartX - currentX;
+    const diffY = swipeStartY - currentY;
+    
+    // If horizontal swipe is greater than vertical and significant
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+      // Right swipe (show contacts) - only if we're in a chat
+      if (diffX < 0 && Math.abs(diffX) > 100) {
+        // This could trigger a back action or show contacts
+        // For now, we'll just prevent default to avoid conflicts
+        e.preventDefault();
+      }
+    }
+  };
+
+  const handleTouchEndSwipe = () => {
+    setSwipeStartX(null);
+    setSwipeStartY(null);
+  };
+
+  // Keyboard event handlers
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(message);
+    }
+    if (e.key === "Escape") {
+      inputRef.current?.blur();
+      setShowEmojiPicker(false);
+    }
+  };
+
+  // Auto-resize input for better mobile experience
+  const adjustInputHeight = () => {
+    const input = inputRef.current;
+    if (input) {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    }
+  };
+
+  // Handle keyboard visibility on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Improved scroll behavior for mobile
+  useEffect(() => {
+    const messagesContainer = messagesContainerRef.current;
+    if (messagesContainer) {
+      const handleScroll = () => {
+        const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+        
+        if (isNearBottom) {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+      };
+
+      messagesContainer.addEventListener('scroll', handleScroll);
+      return () => messagesContainer.removeEventListener('scroll', handleScroll);
+    }
+  }, [messages]);
+
   function formatLastSeen(lastSeen: string | Date | undefined) {
     if (!lastSeen) return ''
     const date = typeof lastSeen === 'string' ? new Date(lastSeen) : lastSeen
@@ -534,28 +667,34 @@ export default function ChatBox({
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div 
+      className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"
+      style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
+      onTouchStart={handleTouchStartSwipe}
+      onTouchMove={handleTouchMoveSwipe}
+      onTouchEnd={handleTouchEndSwipe}
+    >
       {/* Header */}
-      <div className="bg-white/90 backdrop-blur border-b border-white/30 shadow-sm px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
+      <div className="bg-white/90 backdrop-blur border-b border-white/30 shadow-sm px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 sticky top-0 z-10">
         <div className="flex-shrink-0">
           {contact?.image ? (
             <Image
               src={contact.image || "/placeholder.svg"}
               alt={contact.name}
-              width={48}
-              height={48}
-              className="rounded-full object-cover ring-2 ring-blue-200 shadow-md"
+              width={40}
+              height={40}
+              className="rounded-full object-cover ring-2 ring-blue-200 shadow-md sm:w-12 sm:h-12"
             />
           ) : (
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-400 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-md">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-400 to-indigo-400 rounded-full flex items-center justify-center text-white font-semibold text-base sm:text-lg shadow-md">
               {contact ? getInitials(contact.name) : "U"}
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => setUserInfoOpen(true)}>
-          <p className="text-lg font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">{contact?.name || targetEmail}</p>
-          <p className="text-sm text-gray-500 truncate group-hover:text-blue-500 transition-colors">{targetEmail}</p>
-          <p className="text-xs mt-1">
+          <p className="text-base sm:text-lg font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">{contact?.name || targetEmail}</p>
+          <p className="text-xs sm:text-sm text-gray-500 truncate group-hover:text-blue-500 transition-colors">{targetEmail}</p>
+          <p className="text-xs mt-0.5 sm:mt-1">
             {contact?.isOnline
               ? <span className="text-green-600 font-medium">Online</span>
               : contact?.lastSeen
@@ -564,22 +703,39 @@ export default function ChatBox({
             }
           </p>
         </div>
+        {/* Mobile back button */}
+        <button
+          className="md:hidden p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
+          onClick={() => window.history.back()}
+          aria-label="Go back"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-2 sm:px-6 py-4 space-y-4">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-2 sm:px-6 py-4 space-y-3 sm:space-y-4"
+        style={{ 
+          paddingBottom: isInputFocused ? '20px' : '10px',
+          scrollBehavior: 'smooth'
+        }}
+      >
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center mt-16">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-full flex items-center justify-center mb-6 shadow-lg">
-              <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex flex-col items-center justify-center h-full text-center mt-16 px-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-full flex items-center justify-center mb-4 sm:mb-6 shadow-lg">
+              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No messages yet</h3>
-            <p className="text-gray-500 max-w-sm">Start the conversation by sending a message!</p>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No messages yet</h3>
+            <p className="text-sm sm:text-base text-gray-500 max-w-sm">Start the conversation by sending a message!</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-4 max-w-2xl mx-auto">
+          <div className="flex flex-col gap-3 sm:gap-4 max-w-2xl mx-auto">
             {messages.map((msg, i) => {
               const isOwnMessage = msg.from === selfEmailRef.current
               const isDeleting = deletingMessageIds.includes((msg as any)._id)
@@ -595,7 +751,7 @@ export default function ChatBox({
                   className={`flex w-full flex-col ${isOwnMessage ? "items-end" : "items-start"}`}
                 >
                   <div
-                    className={`relative group max-w-[80%] px-5 py-3 rounded-2xl shadow-md break-words transition-all duration-300 ${
+                    className={`relative group max-w-[85%] sm:max-w-[80%] px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl shadow-md break-words transition-all duration-300 ${
                       isOwnMessage
                         ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white ml-auto"
                         : "bg-white text-gray-900 border border-gray-100 mr-auto"
@@ -626,9 +782,9 @@ export default function ChatBox({
                     {/* Long press overlay for mobile */}
                     {isOwnMessage && isLongPressed && (
                       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" onClick={handleOverlayClose}>
-                        <div className="flex flex-col space-y-4 bg-white rounded-2xl p-8 shadow-xl max-w-xs w-full items-center" onClick={e => e.stopPropagation()}>
+                        <div className="flex flex-col space-y-3 bg-white rounded-2xl p-6 sm:p-8 shadow-xl max-w-xs w-full mx-4 items-center" onClick={e => e.stopPropagation()}>
                           <button
-                            className="w-full py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 focus:outline-none"
+                            className="w-full py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 focus:outline-none active:scale-95 transition-transform"
                             onClick={() => {
                               handleEditClick((msg as any)._id, msg.text);
                               setLongPressedMsgId(null);
@@ -638,7 +794,7 @@ export default function ChatBox({
                             Edit
                           </button>
                           <button
-                            className="w-full py-3 bg-red-600 text-white rounded-lg text-lg font-semibold hover:bg-red-700 focus:outline-none"
+                            className="w-full py-3 bg-red-600 text-white rounded-lg text-lg font-semibold hover:bg-red-700 focus:outline-none active:scale-95 transition-transform"
                             onClick={() => {
                               handleDeleteMessage((msg as any)._id);
                               setLongPressedMsgId(null);
@@ -647,7 +803,7 @@ export default function ChatBox({
                             Delete
                           </button>
                           <button
-                            className="w-full py-2 mt-2 bg-gray-200 text-gray-700 rounded-lg text-base font-medium hover:bg-gray-300 focus:outline-none"
+                            className="w-full py-2 mt-2 bg-gray-200 text-gray-700 rounded-lg text-base font-medium hover:bg-gray-300 focus:outline-none active:scale-95 transition-transform"
                             onClick={handleOverlayClose}
                           >
                             Cancel
@@ -660,7 +816,7 @@ export default function ChatBox({
                       <div className="flex flex-col space-y-2">
                         <input
                           type="text"
-                          className="w-full border border-gray-300 text-gray-900 px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                          className="w-full border border-gray-300 text-gray-900 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
                           value={editingText}
                           onChange={e => setEditingText(e.target.value)}
                           onKeyDown={e => {
@@ -671,13 +827,13 @@ export default function ChatBox({
                         />
                         <div className="flex space-x-2 mt-1">
                           <button
-                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium active:scale-95 transition-transform"
                             onClick={() => handleEditSave((msg as any)._id)}
                           >
                             Save
                           </button>
                           <button
-                            className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-xs"
+                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm font-medium active:scale-95 transition-transform"
                             onClick={handleEditCancel}
                           >
                             Cancel
@@ -693,7 +849,7 @@ export default function ChatBox({
                                 <img
                                   src={fileUrl || "/placeholder.svg"}
                                   alt={fileName}
-                                  className="max-h-48 max-w-full rounded-lg mb-2 shadow-sm border border-gray-200"
+                                  className="max-h-40 sm:max-h-48 max-w-full rounded-lg mb-2 shadow-sm border border-gray-200"
                                 />
                               </a>
                             ) : (
@@ -746,23 +902,23 @@ export default function ChatBox({
       </div>
 
       {/* Input Area */}
-      <div className="bg-white/90 backdrop-blur border-t border-white/30 shadow-lg px-6 py-4 sticky bottom-0 z-40">
-        <div className="flex items-end gap-3">
+      <div className="bg-white/90 backdrop-blur border-t border-white/30 shadow-lg px-3 sm:px-6 py-3 sm:py-4 sticky bottom-0 z-40">
+        <div className="flex items-end gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => !isUploadingFile && !pendingFile && fileInputRef.current?.click()}
-            className={`p-3 rounded-full transition-all duration-200 ${
+            className={`p-2.5 sm:p-3 rounded-full transition-all duration-200 ${
               isUploadingFile || pendingFile
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-800"
+                : "bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-800 active:scale-95"
             }`}
             title={isUploadingFile ? "Uploading file..." : pendingFile ? "File selected" : "Attach file"}
             disabled={!isSocketConnected || isUploadingFile || !!pendingFile}
           >
             {isUploadingFile ? (
-              <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              <Paperclip className="w-5 h-5" />
+              <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
             <input
               ref={fileInputRef}
@@ -773,32 +929,37 @@ export default function ChatBox({
               disabled={!isSocketConnected || isUploadingFile || !!pendingFile}
             />
           </button>
+          
           <div className="flex-1 relative">
             <input
+              ref={inputRef}
               type="text"
               value={message}
-              className="w-full border border-gray-300 text-gray-900 px-4 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500 text-sm transition-all duration-200 bg-white shadow-sm"
-              onChange={e => setMessage(e.target.value)}
+              className="w-full border border-gray-300 text-gray-900 px-4 py-2.5 sm:py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500 text-sm transition-all duration-200 bg-white shadow-sm resize-none"
+              onChange={handleInputChange}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+              onKeyDown={handleKeyDown}
               placeholder="Type a message..."
-              onKeyDown={e => e.key === "Enter" && sendMessage(message)}
               disabled={!isSocketConnected || isUploadingFile}
+              style={{ minHeight: '44px' }}
             />
           </div>
+          
           <button
             onClick={() => sendMessage(message)}
-            className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg"
+            className="p-2.5 sm:p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg active:scale-95"
             disabled={!isSocketConnected || (!message.trim() && !pendingFile) || isUploadingFile}
           >
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
+            <Send className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </button>
         </div>
+        
         {/* Pending file preview below input */}
         {pendingFile && (
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 mt-3 max-w-lg mx-auto">
             {pendingFilePreview ? (
-              <img src={pendingFilePreview} alt={pendingFile.name} className="w-12 h-12 object-cover rounded" />
+              <img src={pendingFilePreview} alt={pendingFile.name} className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded" />
             ) : (
               getFileIcon(pendingFile.type)
             )}
@@ -808,16 +969,17 @@ export default function ChatBox({
             </div>
             <button
               type="button"
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-700 focus:outline-none"
+              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-700 focus:outline-none active:scale-95 transition-transform"
               title="Remove file"
               aria-label="Remove file"
               onClick={removePendingFile}
             >
-              <X className="w-4 h-4" />
+              <X className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
           </div>
         )}
       </div>
+      
       <UserInfoBox open={userInfoOpen} onClose={() => setUserInfoOpen(false)} user={{
         name: contact?.name || targetEmail.split('@')[0],
         email: contact?.email || targetEmail,

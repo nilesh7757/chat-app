@@ -203,171 +203,133 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Add Contact Section */}
+    <div className="flex flex-col h-full bg-white">
+      {/* Search and Add Contact Section */}
       <div className="p-4 border-b border-gray-200 bg-white">
-        <div className="flex space-x-2">
-          <input
-            type="email"
-            placeholder="Add contact by email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="flex-1 border border-gray-300 text-gray-900 bg-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm placeholder-gray-500"
-            onKeyDown={(e) => e.key === 'Enter' && addContact()}
-            disabled={isLoading}
-          />
-          <button 
-            onClick={addContact} 
-            className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-sm"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              '+'
-            )}
-          </button>
+        <div className="flex flex-col space-y-3">
+          <div className="flex space-x-2">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter email address"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm mobile-input"
+              onKeyDown={(e) => e.key === 'Enter' && addContact()}
+            />
+            <button
+              onClick={addContact}
+              disabled={isLoading || !email.trim()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm active:scale-95 touch-feedback"
+            >
+              {isLoading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                'Add'
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Unknown Senders Section */}
-      {unknownSenders.length > 0 && (
-        <div className="border-b border-gray-200">
-          <div className="px-4 py-3 bg-gradient-to-r from-yellow-50 to-orange-50 border-b border-yellow-200 flex justify-between items-center">
-            <p className="text-sm font-semibold text-yellow-800">New Messages</p>
-            <div className="flex items-center space-x-2">
-              {isAddingContact && (
-                <div className="w-4 h-4 border border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
-              )}
-              <button
-                onClick={fetchUnknownSenders}
-                className="p-1 text-yellow-700 hover:text-yellow-900 hover:bg-yellow-100 rounded transition-colors"
-                title="Refresh unknown senders"
-                disabled={isAddingContact}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
+      {/* Contacts List */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Unknown Senders Section */}
+        {unknownSenders.length > 0 && (
+          <div className="border-b border-gray-200">
+            <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-200">
+              <h3 className="text-sm font-medium text-yellow-800">New Messages</h3>
+              <p className="text-xs text-yellow-600">People who messaged you but aren't in your contacts</p>
             </div>
-          </div>
-          <div>
-            {unknownSenders.map((sender, index) => (
-              <div
-                key={`unknown-${index}`}
-                className={`cursor-pointer p-4 hover:bg-yellow-50 border-b border-yellow-100 last:border-b-0 transition-all duration-200 group ${
-                  searchParams.get('with') === sender.email ? 'bg-yellow-100 border-l-4 border-l-yellow-500' : ''
-                } ${isAddingContact ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => !isAddingContact && selectContact(sender.email)}
-              >
-                <div className="flex items-center space-x-3">
+            <div className="divide-y divide-gray-100">
+              {unknownSenders.map((sender) => (
+                <div
+                  key={sender.email}
+                  onClick={() => selectContact(sender.email)}
+                  className="flex items-center space-x-3 p-4 hover:bg-gray-50 cursor-pointer transition-colors duration-150 active:bg-gray-100 touch-feedback"
+                >
                   <div className="flex-shrink-0">
                     {sender.image ? (
                       <Image
                         src={sender.image}
                         alt={sender.name}
-                        width={44}
-                        height={44}
+                        width={40}
+                        height={40}
                         className="rounded-full object-cover ring-2 ring-yellow-200"
                       />
                     ) : (
-                      <div className="w-11 h-11 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+                      <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                         {getInitials(sender.name)}
                       </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      Unknown
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {sender.email}
-                    </p>
-                    <p className="text-xs text-gray-600 truncate mt-1">
-                      {sender.lastMessage}
-                    </p>
-                    <p className="text-xs text-yellow-600 font-medium mt-1">
-                      {formatTime(sender.lastMessageTime.toString())}
-                    </p>
-                    <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-yellow-200 text-yellow-800 rounded-full font-semibold">Unknown Sender</span>
+                    <p className="text-sm font-medium text-gray-900 truncate">{sender.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{sender.email}</p>
+                    <p className="text-xs text-gray-400 mt-1 truncate">{sender.lastMessage}</p>
+                    <p className="text-xs text-gray-400">{formatTime(sender.lastMessageTime.toString())}</p>
                   </div>
-                  {/* New message indicator */}
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full flex-shrink-0 shadow-sm"></div>
+                  {isAddingContact && (
+                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Contacts List */}
-      <div className="flex-1 overflow-y-auto">
-        {contacts.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
+              ))}
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No contacts yet</h3>
-            <p className="text-gray-600">Add a contact to start chatting</p>
-          </div>
-        ) : (
-          <div>
-            {contacts.map((contact, index) => (
-              <div
-                key={index}
-                className={`cursor-pointer p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-all duration-200 group ${
-                  searchParams.get('with') === contact.email ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                }`}
-                onClick={() => selectContact(contact.email)}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
-                    {contact.image ? (
-                      <Image
-                        src={contact.image}
-                        alt={contact.name}
-                        width={44}
-                        height={44}
-                        className="rounded-full object-cover ring-2 ring-gray-100"
-                      />
-                    ) : (
-                      <div className="w-11 h-11 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm">
-                        {getInitials(contact.name)}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {contact.name}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {contact.email}
-                    </p>
-                    {!contact.found && (
-                      <p className="text-xs text-orange-600 font-medium mt-1">
-                        Not registered
-                      </p>
-                    )}
-                  </div>
-                  
-                  {/* Delete Button */}
-                  <button
-                    onClick={(e) => deleteContact(contact.email, e)}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200 md:hover:scale-125 md:hover:shadow-lg md:focus:scale-110 md:focus:shadow-lg"
-                    title="Delete contact"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ))}
           </div>
         )}
+
+        {/* Regular Contacts Section */}
+        <div className="divide-y divide-gray-100">
+          {contacts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No contacts yet</h3>
+              <p className="text-sm text-gray-500 mb-4">Add your first contact to start chatting</p>
+            </div>
+          ) : (
+            contacts.map((contact) => (
+              <div
+                key={contact.email}
+                onClick={() => selectContact(contact.email)}
+                className={`flex items-center space-x-3 p-4 hover:bg-gray-50 cursor-pointer transition-colors duration-150 active:bg-gray-100 touch-feedback ${
+                  searchParams.get('with') === contact.email ? 'bg-blue-50 border-r-4 border-blue-500' : ''
+                }`}
+              >
+                <div className="flex-shrink-0">
+                  {contact.image ? (
+                    <Image
+                      src={contact.image}
+                      alt={contact.name}
+                      width={40}
+                      height={40}
+                      className="rounded-full object-cover ring-2 ring-gray-100"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                      {getInitials(contact.name)}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{contact.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{contact.email}</p>
+                </div>
+                <button
+                  onClick={(e) => deleteContact(contact.email, e)}
+                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors duration-200 opacity-0 group-hover:opacity-100 active:scale-95 touch-feedback"
+                  title="Delete contact"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+                  </svg>
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
