@@ -82,6 +82,9 @@ export default function ChatBox({
   const [swipeStartX, setSwipeStartX] = useState<number | null>(null)
   const [swipeStartY, setSwipeStartY] = useState<number | null>(null)
 
+  // Add state for selected message for toolbar actions
+  const [selectedMsgForAction, setSelectedMsgForAction] = useState<{ id: string, text: string, file?: any } | null>(null)
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -752,6 +755,45 @@ export default function ChatBox({
         </button>
       </div>
 
+      {selectedMsgForAction && (
+        <div className="w-full bg-blue-50 border-b border-blue-200 flex items-center justify-between px-4 py-2 sticky top-[56px] z-20 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-blue-700">Message selected</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+              onClick={() => {
+                handleEditClick(selectedMsgForAction.id, selectedMsgForAction.text);
+                setSelectedMsgForAction(null);
+              }}
+              disabled={!!selectedMsgForAction.file}
+              title={selectedMsgForAction.file ? 'Cannot edit file messages' : 'Edit message'}
+            >
+              Edit
+            </button>
+            <button
+              className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to delete this message?')) {
+                  handleDeleteMessage(selectedMsgForAction.id);
+                }
+                setSelectedMsgForAction(null);
+              }}
+            >
+              Delete
+            </button>
+            <button
+              className="ml-2 px-2 py-1 text-gray-500 hover:text-gray-700 rounded"
+              onClick={() => setSelectedMsgForAction(null)}
+              title="Cancel"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <div 
         ref={messagesContainerRef}
@@ -793,64 +835,9 @@ export default function ChatBox({
                         ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white ml-auto"
                         : "bg-white text-gray-900 border border-gray-100 mr-auto"
                     } ${isDeleting ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100"}`}
-                    onTouchStart={isOwnMessage ? () => handleTouchStart((msg as any)._id) : undefined}
-                    onTouchEnd={isOwnMessage ? handleTouchEnd : undefined}
-                    onClick={isOwnMessage ? () => handleMobileTap((msg as any)._id) : undefined}
+                    onTouchStart={isOwnMessage ? () => { handleTouchStart((msg as any)._id); setSelectedMsgForAction({ id: (msg as any)._id, text: msg.text, file: msg.file }); } : undefined}
+                    onClick={isOwnMessage ? () => setSelectedMsgForAction({ id: (msg as any)._id, text: msg.text, file: msg.file }) : undefined}
                   >
-                    {/* Edit/Delete buttons for desktop */}
-                    {isOwnMessage && (
-                      <div className="hidden md:flex absolute -top-3 -right-3 space-x-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <button
-                          className="w-7 h-7 bg-white shadow-lg border border-blue-200 hover:bg-blue-50 hover:scale-110 text-blue-600 rounded-full flex items-center justify-center transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                          title="Edit"
-                          onClick={() => handleEditClick((msg as any)._id, msg.text)}
-                          disabled={!!msg.file}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm-6 6h6v-6H3v6z" /></svg>
-                        </button>
-                        <button
-                          className="w-7 h-7 bg-white shadow-lg border border-red-200 hover:bg-red-50 hover:scale-110 text-red-600 rounded-full flex items-center justify-center transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-red-400"
-                          title="Delete"
-                          onClick={() => handleDeleteMessage((msg as any)._id)}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
-                        </button>
-                      </div>
-                    )}
-                    {/* Long press overlay for mobile */}
-                    {isOwnMessage && isLongPressed && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 animate-fade-in" onClick={handleOverlayClose}>
-                        <div className="flex flex-col space-y-3 bg-white rounded-2xl p-6 sm:p-8 shadow-2xl max-w-xs w-full mx-4 items-center animate-pop-in" onClick={e => e.stopPropagation()}>
-                          <button
-                            className="w-full py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 focus:outline-none active:scale-95 transition-transform shadow-md"
-                            onClick={() => {
-                              handleEditClick((msg as any)._id, msg.text);
-                              setLongPressedMsgId(null);
-                            }}
-                            disabled={!!msg.file}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="w-full py-3 bg-red-600 text-white rounded-lg text-lg font-semibold hover:bg-red-700 focus:outline-none active:scale-95 transition-transform shadow-md"
-                            onClick={() => {
-                              if (window.confirm('Are you sure you want to delete this message?')) {
-                                handleDeleteMessage((msg as any)._id);
-                              }
-                              setLongPressedMsgId(null);
-                            }}
-                          >
-                            Delete
-                          </button>
-                          <button
-                            className="w-full py-2 mt-2 bg-gray-200 text-gray-700 rounded-lg text-base font-medium hover:bg-gray-300 focus:outline-none active:scale-95 transition-transform"
-                            onClick={handleOverlayClose}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
                     {/* Message content */}
                     {editingId === (msg as any)._id ? (
                       <div className="flex flex-col space-y-2 animate-fade-in">
