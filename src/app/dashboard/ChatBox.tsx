@@ -313,9 +313,16 @@ export default function ChatBox({
     }
   }, [targetEmail, onRefreshContacts, onUnknownMessage])
 
+  // Only auto-scroll if user is near the bottom or sends a message
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const threshold = 150; // px from bottom
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const handleEditClick = (msgId: string, oldText: string) => {
     setEditingId(msgId)
@@ -661,24 +668,6 @@ export default function ChatBox({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Improved scroll behavior for mobile
-  useEffect(() => {
-    const messagesContainer = messagesContainerRef.current;
-    if (messagesContainer) {
-      const handleScroll = () => {
-        const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
-        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-        
-        if (isNearBottom) {
-          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }
-      };
-
-      messagesContainer.addEventListener('scroll', handleScroll);
-      return () => messagesContainer.removeEventListener('scroll', handleScroll);
-    }
-  }, [messages]);
-
   function formatLastSeen(lastSeen: string | Date | undefined) {
     if (!lastSeen) return ''
     const date = typeof lastSeen === 'string' ? new Date(lastSeen) : lastSeen
@@ -722,8 +711,7 @@ export default function ChatBox({
 
   return (
     <div 
-      className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"
-      style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
+      className="flex flex-col h-full w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"
       onTouchStart={handleTouchStartSwipe}
       onTouchMove={handleTouchMoveSwipe}
       onTouchEnd={handleTouchEndSwipe}
@@ -816,30 +804,30 @@ export default function ChatBox({
                   >
                     {/* Edit/Delete buttons for desktop */}
                     {isOwnMessage && (
-                      <div className="hidden md:flex absolute -top-2 -right-2 space-x-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <div className="hidden md:flex absolute -top-3 -right-3 space-x-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <button
-                          className="w-5 h-5 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center shadow transition-all p-0 md:hover:scale-125 md:hover:shadow-lg md:focus:scale-110 md:focus:shadow-lg"
+                          className="w-7 h-7 bg-white shadow-lg border border-blue-200 hover:bg-blue-50 hover:scale-110 text-blue-600 rounded-full flex items-center justify-center transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400"
                           title="Edit"
                           onClick={() => handleEditClick((msg as any)._id, msg.text)}
                           disabled={!!msg.file}
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm-6 6h6v-6H3v6z" /></svg>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm-6 6h6v-6H3v6z" /></svg>
                         </button>
                         <button
-                          className="w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition-all p-0 md:hover:scale-125 md:hover:shadow-lg md:focus:scale-110 md:focus:shadow-lg"
+                          className="w-7 h-7 bg-white shadow-lg border border-red-200 hover:bg-red-50 hover:scale-110 text-red-600 rounded-full flex items-center justify-center transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-red-400"
                           title="Delete"
                           onClick={() => handleDeleteMessage((msg as any)._id)}
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
                         </button>
                       </div>
                     )}
                     {/* Long press overlay for mobile */}
                     {isOwnMessage && isLongPressed && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" onClick={handleOverlayClose}>
-                        <div className="flex flex-col space-y-3 bg-white rounded-2xl p-6 sm:p-8 shadow-xl max-w-xs w-full mx-4 items-center" onClick={e => e.stopPropagation()}>
+                      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 animate-fade-in" onClick={handleOverlayClose}>
+                        <div className="flex flex-col space-y-3 bg-white rounded-2xl p-6 sm:p-8 shadow-2xl max-w-xs w-full mx-4 items-center animate-pop-in" onClick={e => e.stopPropagation()}>
                           <button
-                            className="w-full py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 focus:outline-none active:scale-95 transition-transform"
+                            className="w-full py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 focus:outline-none active:scale-95 transition-transform shadow-md"
                             onClick={() => {
                               handleEditClick((msg as any)._id, msg.text);
                               setLongPressedMsgId(null);
@@ -849,9 +837,11 @@ export default function ChatBox({
                             Edit
                           </button>
                           <button
-                            className="w-full py-3 bg-red-600 text-white rounded-lg text-lg font-semibold hover:bg-red-700 focus:outline-none active:scale-95 transition-transform"
+                            className="w-full py-3 bg-red-600 text-white rounded-lg text-lg font-semibold hover:bg-red-700 focus:outline-none active:scale-95 transition-transform shadow-md"
                             onClick={() => {
-                              handleDeleteMessage((msg as any)._id);
+                              if (window.confirm('Are you sure you want to delete this message?')) {
+                                handleDeleteMessage((msg as any)._id);
+                              }
                               setLongPressedMsgId(null);
                             }}
                           >
@@ -868,10 +858,10 @@ export default function ChatBox({
                     )}
                     {/* Message content */}
                     {editingId === (msg as any)._id ? (
-                      <div className="flex flex-col space-y-2">
+                      <div className="flex flex-col space-y-2 animate-fade-in">
                         <input
                           type="text"
-                          className="w-full border border-gray-300 text-gray-900 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                          className="w-full border border-blue-300 text-gray-900 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white shadow-sm"
                           value={editingText}
                           onChange={e => setEditingText(e.target.value)}
                           onKeyDown={e => {
@@ -882,13 +872,13 @@ export default function ChatBox({
                         />
                         <div className="flex space-x-2 mt-1">
                           <button
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium active:scale-95 transition-transform"
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium active:scale-95 transition-transform shadow"
                             onClick={() => handleEditSave((msg as any)._id)}
                           >
                             Save
                           </button>
                           <button
-                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm font-medium active:scale-95 transition-transform"
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium active:scale-95 transition-transform shadow"
                             onClick={handleEditCancel}
                           >
                             Cancel

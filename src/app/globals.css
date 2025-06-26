@@ -36,6 +36,13 @@ body {
 * {
   /* Improve touch targets */
   touch-action: manipulation;
+  /* For Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #6366f1 #e0e7ff;
+}
+
+.dark * {
+  scrollbar-color: #6366f1 #1e293b;
 }
 
 /* Better input handling on mobile */
@@ -49,21 +56,34 @@ input, textarea, select {
 
 /* Custom scrollbar for webkit browsers */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
+  width: 8px;
+  height: 8px;
   background: transparent;
 }
 
+::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.03);
+  border-radius: 8px;
+}
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
+  background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 100%);
+  border-radius: 8px;
+  transition: background 0.3s;
+  min-height: 40px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #334155 0%, #6366f1 100%);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
 }
 
 /* Mobile-specific button improvements */
