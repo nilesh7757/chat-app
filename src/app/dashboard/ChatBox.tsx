@@ -710,12 +710,7 @@ export default function ChatBox({
   }
 
   return (
-    <div 
-      className="flex flex-col h-full w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"
-      onTouchStart={handleTouchStartSwipe}
-      onTouchMove={handleTouchMoveSwipe}
-      onTouchEnd={handleTouchEndSwipe}
-    >
+    <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" style={{height: '100dvh'}}>
       {/* Header */}
       <div className="bg-white/90 backdrop-blur border-b border-white/30 shadow-sm px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 sticky top-0 z-10">
         <div className="flex-shrink-0">

@@ -150,7 +150,7 @@ export default function Page() {
   };
 
   return (
-    <div className="h-screen flex bg-white relative overflow-hidden">
+    <div className="min-h-screen flex bg-white relative overflow-hidden">
       {/* Floating dark mode toggle button in top right */}
       {/* Theme toggle removed */}
 
