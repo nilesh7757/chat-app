@@ -1,7 +1,3 @@
-Here’s a polished and professional version of your `README.md` without the license section:
-
----
-
 # 💬 Chat App
 
 A real-time chat application built with **Next.js**, **WebSocket**, **MongoDB**, and **NextAuth** for secure and seamless communication.
@@ -157,7 +153,3 @@ To contribute:
 3. Commit your changes.
 4. Push to your fork.
 5. Create a Pull Request.
-
----
-
-Let me know if you'd like a badge section or an animated demo/GIF link included too!
