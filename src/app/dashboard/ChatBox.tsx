@@ -341,7 +341,7 @@ export default function ChatBox({
       await new Promise((resolve) => setTimeout(resolve, 300)) // Wait for animation
       const session = await getSession()
       if (!session?.user?.email) return
-      await axios.delete(`${process.env.NEXT_PUBLIC_WS_URL}/messages/` + msgId, { headers: { "Content-Type": "application/json" }, data: { email: session.user.email }, withCredentials: true } as any)
+      await axios.delete(`${API_BASE_URL}/api/messages/` + msgId, { headers: { "Content-Type": "application/json" }, data: { email: session.user.email }, withCredentials: true } as any)
       setMessages((prev) => prev.filter((m: any) => m._id !== msgId))
     } catch (err) {
       toast.error("Failed to delete message")
