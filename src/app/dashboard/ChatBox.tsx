@@ -183,6 +183,12 @@ export default function ChatBox({
 
       socket.onopen = () => {
         setIsSocketConnected(true)
+        // Send join message immediately after connection
+        socket.send(JSON.stringify({
+          type: "join",
+          self: self,
+          target: targetEmail
+        }))
       }
 
       socket.onerror = (error) => {
