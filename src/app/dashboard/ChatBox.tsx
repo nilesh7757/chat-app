@@ -120,10 +120,12 @@ export default function ChatBox({
     return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+
   const fetchContactDetails = async (email: string): Promise<ChatContact> => {
     try {
-      const response = await axios.get(`/api/user/${encodeURIComponent(email)}`, { withCredentials: true });
-      const userData = response.data as { email: string; name?: string; image: string | null; bio?: string; isOnline?: boolean; lastSeen?: string | Date; found?: boolean }
+      const fetchContactResponse = await axios.get(`${API_BASE_URL}/api/user/${encodeURIComponent(email)}`, { withCredentials: true });
+      const userData = fetchContactResponse.data as { email: string; name?: string; image: string | null; bio?: string; isOnline?: boolean; lastSeen?: string | Date; found?: boolean }
       return {
         email: userData.email,
         name: userData.name || email.split("@")[0],
@@ -152,7 +154,7 @@ export default function ChatBox({
     try {
       const contactDetails = await fetchContactDetails(email)
       onAddContact(contactDetails)
-      const response = await axios.post("/api/contacts/add", { contactEmail: email }, { withCredentials: true });
+      const addContactResponse = await axios.post(`${API_BASE_URL}/api/contacts/add`, { contactEmail: email }, { withCredentials: true });
       setHasAddedContact(true)
     } catch (error) {
     }
@@ -451,7 +453,7 @@ export default function ChatBox({
       const formData = new FormData()
       formData.append("file", pendingFile)
       try {
-        const res = await axios.post("/api/upload-file", formData, {
+        const res = await axios.post(`${API_BASE_URL}/api/upload-file`, formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
