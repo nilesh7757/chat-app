@@ -37,7 +37,7 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
 
   const fetchUserDetails = async (email: string): Promise<Contact> => {
     try {
-      const response = await axios.get(`/api/user/${encodeURIComponent(email)}`);
+      const response = await axios.get(`/api/user/${encodeURIComponent(email)}`, { withCredentials: true });
       return response.data as Contact;
     } catch (error) {
       console.error('Error fetching user details:', error);
@@ -53,7 +53,7 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
   const fetchUnknownSenders = async () => {
     try {
       console.log('Fetching unknown senders...');
-      const response = await axios.get('/api/contacts/unknown-senders');
+      const response = await axios.get('/api/contacts/unknown-senders', { withCredentials: true });
       const data = response.data as { unknownSenders: UnknownSender[] };
       console.log('Unknown senders response:', data);
       setUnknownSenders(data.unknownSenders || []);
@@ -86,7 +86,7 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
       setContacts(prev => [...prev, userDetails]);
       
       // Persist to database
-      const response = await axios.post('/api/contacts/add', { contactEmail: email });
+      const response = await axios.post('/api/contacts/add', { contactEmail: email }, { withCredentials: true });
 
       if (response.status !== 200) {
         console.error('Failed to save contact to database');
@@ -123,7 +123,7 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
         setContacts(prev => [...prev, userDetails]);
         
         // Persist to database
-        const response = await axios.post('/api/contacts/add', { contactEmail });
+        const response = await axios.post('/api/contacts/add', { contactEmail }, { withCredentials: true });
 
         if (response.status !== 200) {
           console.error('Failed to save contact to database');
@@ -158,8 +158,13 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
     }
 
     try {
-      const config = { headers: { 'Content-Type': 'application/json' }, data: { contactEmail } };
-      const response = await axios.delete('/api/contacts/delete', config);
+      const response = await axios.request({
+        url: '/api/contacts/delete',
+        method: 'delete',
+        headers: { 'Content-Type': 'application/json' },
+        data: { contactEmail },
+        withCredentials: true
+      });
 
       if (response.status === 200) {
         // Remove from local state

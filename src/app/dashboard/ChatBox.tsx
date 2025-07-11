@@ -122,7 +122,7 @@ export default function ChatBox({
 
   const fetchContactDetails = async (email: string): Promise<ChatContact> => {
     try {
-      const response = await axios.get(`/api/user/${encodeURIComponent(email)}`)
+      const response = await axios.get(`/api/user/${encodeURIComponent(email)}`, { withCredentials: true });
       const userData = response.data as { email: string; name?: string; image: string | null; bio?: string; isOnline?: boolean; lastSeen?: string | Date; found?: boolean }
       return {
         email: userData.email,
@@ -152,7 +152,7 @@ export default function ChatBox({
     try {
       const contactDetails = await fetchContactDetails(email)
       onAddContact(contactDetails)
-      const response = await axios.post("/api/contacts/add", { contactEmail: email })
+      const response = await axios.post("/api/contacts/add", { contactEmail: email }, { withCredentials: true });
       setHasAddedContact(true)
     } catch (error) {
     }
@@ -300,10 +300,7 @@ export default function ChatBox({
     try {
       const session = await getSession()
       if (!session?.user?.email) return
-      const res = await axios.patch(`${process.env.NEXT_PUBLIC_WS_URL}/messages/` + msgId, {
-        email: session.user.email,
-        text: editingText.trim(),
-      })
+      const res = await axios.patch(`${process.env.NEXT_PUBLIC_WS_URL}/messages/` + msgId, { email: session.user.email, text: editingText.trim() }, { withCredentials: true });
       const data = res.data as { data: { text: string } }
       setMessages((prev) => prev.map((m: any) => (m._id === msgId ? { ...m, text: data.data.text } : m)))
       setEditingId(null)
@@ -342,10 +339,7 @@ export default function ChatBox({
       await new Promise((resolve) => setTimeout(resolve, 300)) // Wait for animation
       const session = await getSession()
       if (!session?.user?.email) return
-      await axios.delete(`${process.env.NEXT_PUBLIC_WS_URL}/messages/` + msgId, {
-        headers: { "Content-Type": "application/json" },
-        data: { email: session.user.email },
-      } as any)
+      await axios.delete(`${process.env.NEXT_PUBLIC_WS_URL}/messages/` + msgId, { headers: { "Content-Type": "application/json" }, data: { email: session.user.email }, withCredentials: true } as any)
       setMessages((prev) => prev.filter((m: any) => m._id !== msgId))
     } catch (err) {
       toast.error("Failed to delete message")
