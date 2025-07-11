@@ -655,7 +655,7 @@ export default function ChatBox({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" style={{height: '100dvh'}}>
+    <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" style={{height: '100dvh', maxHeight: '100dvh', overflow: 'hidden'}}>
       {/* Header */}
       <div className="bg-white/90 backdrop-blur border-b border-white/30 shadow-sm py-3 sm:py-4 flex items-center gap-3 sm:gap-4 sticky top-0 z-10">
         <div className="flex-shrink-0">
@@ -761,10 +761,12 @@ export default function ChatBox({
       {/* Messages */}
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto py-4 space-y-3 sm:space-y-4"
+        className="flex-1 overflow-y-auto py-4 space-y-3 sm:space-y-4 max-h-[calc(100dvh-120px)] min-h-0"
         style={{ 
           paddingBottom: isInputFocused ? '20px' : '10px',
-          scrollBehavior: 'smooth'
+          scrollBehavior: 'smooth',
+          maxHeight: 'calc(100dvh - 120px)',
+          minHeight: 0
         }}
       >
         {messages.length === 0 ? (
@@ -897,7 +899,7 @@ export default function ChatBox({
       </div>
 
       {/* Input Area */}
-      <div className="bg-white/90 backdrop-blur border-t border-white/30 shadow-lg py-3 sm:py-4 sticky bottom-0 z-40">
+      <div className="bg-white/90 backdrop-blur border-t border-white/30 shadow-lg py-3 sm:py-4 sticky bottom-0 z-40 w-full max-w-full">
         <div className="flex items-end gap-2 sm:gap-3">
           <button
             type="button"
