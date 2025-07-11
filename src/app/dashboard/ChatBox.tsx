@@ -658,6 +658,8 @@ export default function ChatBox({
     return <span title="Sent"><Check className="w-4 h-4 text-gray-400 inline align-middle" /></span>;
   }
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   return (
     <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" style={{height: '100dvh'}}>
       {/* Header */}
@@ -702,40 +704,62 @@ export default function ChatBox({
       </div>
 
       {selectedMsgForAction && (
-        <div className="w-full bg-blue-50 border-b border-blue-200 flex items-center justify-between px-4 py-2 sticky top-[56px] z-20 animate-fade-in">
+        <div className="w-full bg-white border-b border-blue-200 flex items-center justify-between px-4 py-2 sticky top-[56px] z-20 shadow animate-fade-in rounded-t-xl">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-blue-700">Message selected</span>
+            <span className="font-medium text-blue-700 text-base">Message selected</span>
           </div>
           <div className="flex gap-2">
             <button
-              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow transition active:scale-95 disabled:opacity-50"
               onClick={() => {
-                handleEditClick(selectedMsgForAction.id, selectedMsgForAction.text);
+                if (selectedMsgForAction) handleEditClick(selectedMsgForAction.id, selectedMsgForAction.text);
                 setSelectedMsgForAction(null);
               }}
-              disabled={!!selectedMsgForAction.file}
-              title={selectedMsgForAction.file ? 'Cannot edit file messages' : 'Edit message'}
+              disabled={!!selectedMsgForAction?.file}
+              title={selectedMsgForAction?.file ? 'Cannot edit file messages' : 'Edit message'}
             >
-              Edit
+              <span className="flex items-center gap-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>Edit</span>
             </button>
             <button
-              className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
-              onClick={() => {
-                if (window.confirm('Are you sure you want to delete this message?')) {
-                  handleDeleteMessage(selectedMsgForAction.id);
-                }
-                setSelectedMsgForAction(null);
-              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold shadow transition active:scale-95"
+              onClick={() => setShowDeleteModal(true)}
             >
-              Delete
+              <span className="flex items-center gap-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>Delete</span>
             </button>
             <button
-              className="ml-2 px-2 py-1 text-gray-500 hover:text-gray-700 rounded"
+              className="ml-2 px-2 py-1 text-gray-500 hover:text-gray-700 rounded border border-gray-200 bg-gray-50 transition"
               onClick={() => setSelectedMsgForAction(null)}
               title="Cancel"
             >
               ✕
             </button>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedMsgForAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-xs animate-fadeIn">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Message?</h3>
+            <p className="text-gray-600 mb-4">Are you sure you want to delete this message? This action cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition"
+                onClick={() => setShowDeleteModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition"
+                onClick={() => {
+                  if (selectedMsgForAction?.id) handleDeleteMessage(selectedMsgForAction.id);
+                  setShowDeleteModal(false);
+                  setSelectedMsgForAction(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -786,10 +810,10 @@ export default function ChatBox({
                   >
                     {/* Message content */}
                     {editingId === (msg as any)._id ? (
-                      <div className="flex flex-col space-y-2 animate-fade-in">
+                      <div className="flex flex-col space-y-2 animate-fade-in bg-blue-50 p-3 rounded-xl shadow-inner">
                         <input
                           type="text"
-                          className="w-full border border-blue-300 text-gray-900 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white shadow-sm"
+                          className="w-full border border-blue-400 text-gray-900 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base bg-white shadow-sm"
                           value={editingText}
                           onChange={e => setEditingText(e.target.value)}
                           onKeyDown={e => {
@@ -797,16 +821,17 @@ export default function ChatBox({
                             if (e.key === 'Escape') handleEditCancel()
                           }}
                           autoFocus
+                          placeholder="Edit your message..."
                         />
-                        <div className="flex space-x-2 mt-1">
+                        <div className="flex space-x-2 mt-1 justify-end">
                           <button
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium active:scale-95 transition-transform shadow"
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold active:scale-95 transition-transform shadow"
                             onClick={() => handleEditSave((msg as any)._id)}
                           >
                             Save
                           </button>
                           <button
-                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium active:scale-95 transition-transform shadow"
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-semibold active:scale-95 transition-transform shadow"
                             onClick={handleEditCancel}
                           >
                             Cancel

@@ -32,6 +32,8 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
   const [unknownSenders, setUnknownSenders] = useState<UnknownSender[]>([]);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pendingDeleteEmail, setPendingDeleteEmail] = useState<string | null>(null);
 
   const fetchUserDetails = async (email: string): Promise<Contact> => {
     try {
@@ -318,11 +320,15 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
                   <p className="text-xs text-gray-500 truncate">{contact.email}</p>
                 </div>
                 <button
-                  onClick={(e) => deleteContact(contact.email, e)}
-                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors duration-200 opacity-0 group-hover:opacity-100 active:scale-95 touch-feedback"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setPendingDeleteEmail(contact.email);
+                    setShowDeleteModal(true);
+                  }}
+                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors duration-200 active:scale-95 touch-feedback border border-gray-200 bg-white shadow-sm ml-2"
                   title="Delete contact"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
                   </svg>
                 </button>
@@ -331,6 +337,32 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
           )}
         </div>
       </div>
+      {showDeleteModal && pendingDeleteEmail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-xs animate-fadeIn">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Contact?</h3>
+            <p className="text-gray-600 mb-4">Are you sure you want to delete <span className='font-bold'>{pendingDeleteEmail}</span> from your contacts? This action cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition"
+                onClick={() => { setShowDeleteModal(false); setPendingDeleteEmail(null); }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition"
+                onClick={async () => {
+                  if (pendingDeleteEmail) await deleteContact(pendingDeleteEmail, { stopPropagation: () => {} } as any);
+                  setShowDeleteModal(false);
+                  setPendingDeleteEmail(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
