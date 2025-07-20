@@ -1,20 +1,27 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose")
 
-const messageSchema = new mongoose.Schema({
-  roomId: { type: String, required: true },
-  from: { type: String, required: true },
-  text: { type: String, required: true },
-  file: {
-    url: String,
-    name: String,
-    type: String
+const MessageSchema = new mongoose.Schema(
+  {
+    roomId: { type: String, required: true },
+    from: { type: String, required: true },
+    text: { type: String, default: "" },
+    file: {
+      url: String,
+      name: String,
+      type: String,
+      size: Number,
+    },
+    status: { type: String, enum: ["sent", "delivered", "seen"], default: "sent" },
+    edited: { type: Boolean, default: false },
+    editedAt: { type: Date },
+    deleted: { type: Boolean, default: false },
+    deletedAt: { type: Date },
+    deletedFor: [{ type: String }], // Array of user emails who deleted this message for themselves
+    deletedForAll: { type: Boolean, default: false }, // True if message is deleted for everyone
   },
-  edited: { type: Boolean, default: false },
-  editedAt: { type: Date },
-  deleted: { type: Boolean, default: false },
-  deletedAt: { type: Date },
-}, { timestamps: true });
+  {
+    timestamps: true,
+  },
+)
 
-messageSchema.index({ roomId: 1, createdAt: 1 });
-
-export const Message = mongoose.models.Message || mongoose.model("Message", messageSchema); 
+export const Message = mongoose.models.Message || mongoose.model("Message", MessageSchema)

@@ -1,15 +1,27 @@
 "use client"
-
 import { useEffect, useRef, useState } from "react"
 import { getSession } from "next-auth/react"
 import Image from "next/image"
-import React from "react"
-import axios from "axios"
-import UserInfoBox from './UserInfoBox'
-import { Image as ImageIcon, FileText, FileType2, FileSpreadsheet, Presentation, FileArchive, File, X, Paperclip, Send, Mic, Smile, Check, CheckCheck, MoreVertical } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { toast } from 'react-toastify'
-import LinkPreview from '@/components/LinkPreview';
+import type React from "react"
+import { default as axios } from "axios"
+import UserInfoBox from "./UserInfoBox"
+import {
+  ImageIcon,
+  FileText,
+  FileType2,
+  FileSpreadsheet,
+  Presentation,
+  FileArchive,
+  File,
+  X,
+  Paperclip,
+  Send,
+  Check,
+  CheckCheck,
+  MoreVertical,
+} from "lucide-react"
+import { toast } from "react-toastify"
+import LinkPreview from "@/components/LinkPreview"
 
 interface ChatContact {
   email: string
@@ -61,18 +73,18 @@ export default function ChatBox({
   const [isUploadingFile, setIsUploadingFile] = useState(false)
   const [isSocketConnected, setIsSocketConnected] = useState(false)
   const socketRef = useRef<WebSocket | null>(null)
+  const [selfEmail, setSelfEmail] = useState<string>("");
   const selfEmailRef = useRef<string>("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [userInfoOpen, setUserInfoOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingText, setEditingText] = useState("")
+  // Remove all state, handlers, and UI for editing and deleting messages
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [pendingFilePreview, setPendingFilePreview] = useState<string | null>(null)
   const [deletingMessageIds, setDeletingMessageIds] = useState<string[]>([])
   const [longPressedMsgId, setLongPressedMsgId] = useState<string | null>(null)
   const longPressTimeout = useRef<NodeJS.Timeout | null>(null)
-  
+
   // Mobile-specific states
   const [isInputFocused, setIsInputFocused] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -82,10 +94,15 @@ export default function ChatBox({
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [swipeStartX, setSwipeStartX] = useState<number | null>(null)
   const [swipeStartY, setSwipeStartY] = useState<number | null>(null)
-
   // Add state for selected message for toolbar actions
-  const [selectedMsgForAction, setSelectedMsgForAction] = useState<{ id: string, text: string, file?: any } | null>(null)
-  const [actionMenuMsgId, setActionMenuMsgId] = useState<string | null>(null);
+  const [selectedMsgForAction, setSelectedMsgForAction] = useState<{ id: string; text: string; file?: any } | null>(
+    null,
+  )
+  const [actionMenuMsgId, setActionMenuMsgId] = useState<string | null>(null)
+
+  // Edit message state
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null)
+  const [editingText, setEditingText] = useState<string>("")
 
   const getInitials = (name: string) => {
     return name
@@ -122,17 +139,27 @@ export default function ChatBox({
     return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ""
 
   const fetchContactDetails = async (email: string): Promise<ChatContact> => {
     try {
-      const fetchContactResponse = await axios.get(`${API_BASE_URL}/api/user/${encodeURIComponent(email)}`, { withCredentials: true });
-      const userData = fetchContactResponse.data as { email: string; name?: string; image: string | null; bio?: string; isOnline?: boolean; lastSeen?: string | Date; found?: boolean }
+      const fetchContactResponse = await axios.get(`${API_BASE_URL}/api/user/${encodeURIComponent(email)}`, {
+        withCredentials: true,
+      })
+      const userData = fetchContactResponse.data as {
+        email: string
+        name?: string
+        image: string | null
+        bio?: string
+        isOnline?: boolean
+        lastSeen?: string | Date
+        found?: boolean
+      }
       return {
         email: userData.email,
         name: userData.name || email.split("@")[0],
         image: userData.image,
-        bio: userData.bio || '',
+        bio: userData.bio || "",
         isOnline: userData.isOnline,
         lastSeen: userData.lastSeen,
         found: userData.found !== undefined ? userData.found : true,
@@ -142,7 +169,7 @@ export default function ChatBox({
         email,
         name: email.split("@")[0],
         image: null,
-        bio: '',
+        bio: "",
         isOnline: false,
         lastSeen: undefined,
         found: false,
@@ -152,35 +179,39 @@ export default function ChatBox({
 
   const addContactToList = async (email: string) => {
     if (hasAddedContact || !onAddContact) return
-
     try {
       const contactDetails = await fetchContactDetails(email)
       onAddContact(contactDetails)
-      const addContactResponse = await axios.post(`${API_BASE_URL}/api/contacts/add`, { contactEmail: email }, { withCredentials: true });
+      const addContactResponse = await axios.post(
+        `${API_BASE_URL}/api/contacts/add`,
+        { contactEmail: email },
+        { withCredentials: true },
+      )
       setHasAddedContact(true)
-    } catch (error) {
-    }
+    } catch (error) {}
   }
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    const fetchAndSetContact = () => fetchContactDetails(targetEmail).then(setContact);
-    fetchAndSetContact();
-    interval = setInterval(fetchAndSetContact, 5000); // Poll every 5 seconds
-    return () => clearInterval(interval);
+    let interval: NodeJS.Timeout
+    const fetchAndSetContact = () => fetchContactDetails(targetEmail).then(setContact)
+    fetchAndSetContact()
+    interval = setInterval(fetchAndSetContact, 5000) // Poll every 5 seconds
+    return () => clearInterval(interval)
     fetchContactDetails(targetEmail).then(setContact)
   }, [targetEmail])
 
   useEffect(() => {
-    const connect = async () => {
-      const session = await getSession()
-      if (!session?.user?.email) {
-        return
+    getSession().then(session => {
+      if (session?.user?.email) {
+        setSelfEmail(session.user.email);
+        selfEmailRef.current = session.user.email;
       }
+    });
+  }, []);
 
-      const self = session.user.email
-      selfEmailRef.current = self
-
+  useEffect(() => {
+    if (!selfEmail) return;
+    const connect = async () => {
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001"
       const socket = new WebSocket(wsUrl)
       socketRef.current = socket
@@ -188,11 +219,13 @@ export default function ChatBox({
       socket.onopen = () => {
         setIsSocketConnected(true)
         // Send join message immediately after connection
-        socket.send(JSON.stringify({
-          type: "join",
-          self: self,
-          target: targetEmail
-        }))
+        socket.send(
+          JSON.stringify({
+            type: "join",
+            self: selfEmail,
+            target: targetEmail,
+          }),
+        )
       }
 
       socket.onerror = (error) => {
@@ -205,7 +238,6 @@ export default function ChatBox({
 
       socket.onmessage = (event) => {
         const msg = JSON.parse(event.data)
-
         if (msg.type === "chat") {
           setMessages((prev) => {
             const isDuplicate = prev.some((m) => {
@@ -221,27 +253,27 @@ export default function ChatBox({
               }
               return false
             })
-
             if (isDuplicate) {
               return prev
             }
-
             const newMessages = [...prev, msg]
-
-            if (msg.from !== selfEmailRef.current && msg._id) {
-              sendStatusUpdate('delivered', msg._id);
+            if (msg.from !== selfEmail && msg._id) {
+              sendStatusUpdate("delivered", msg._id)
             }
-
             return newMessages
           })
         }
         if (msg.type === "history") {
-          setMessages(msg.messages)
+          setMessages(
+            msg.messages.filter((m: any) =>
+              !(Array.isArray(m.deletedFor) && selfEmail && m.deletedFor.includes(selfEmail))
+            )
+          );
           msg.messages.forEach((m: any) => {
-            if (m.from !== selfEmailRef.current && m.status !== 'delivered' && m.status !== 'seen' && m._id) {
-              sendStatusUpdate('delivered', m._id);
+            if (m.from !== selfEmail && m.status !== "delivered" && m.status !== "seen" && m._id) {
+              sendStatusUpdate("delivered", m._id)
             }
-          });
+          })
         }
         if (msg.type === "contact_added") {
           setContactNotification(msg.message)
@@ -259,63 +291,85 @@ export default function ChatBox({
         }
         if (msg.type === "status") {
           if (msg.email === targetEmail) {
-            setContact(prev => prev ? {
-              ...prev,
-              isOnline: msg.isOnline,
-              lastSeen: msg.lastSeen ? new Date(msg.lastSeen) : prev.lastSeen
-            } : prev)
+            setContact((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    isOnline: msg.isOnline,
+                    lastSeen: msg.lastSeen ? new Date(msg.lastSeen) : prev.lastSeen,
+                  }
+                : prev,
+            )
           }
         }
         if (msg.type === "status_update") {
-          setMessages((prev) => prev.map((m: any) =>
-            m._id === msg.messageId ? { ...m, status: msg.status } : m
-          ));
+          setMessages((prev) => prev.map((m: any) => (m._id === msg.messageId ? { ...m, status: msg.status } : m)))
+        }
+        // NEW: Handle delete for everyone
+        if (msg.type === "delete_for_everyone" && msg.messageId) {
+          setMessages((prev) => prev.filter((m: any) => m._id !== msg.messageId))
+        }
+        // NEW: Handle delete for me (real-time)
+        if (msg.type === "delete_for_me" && msg.messageId) {
+          setMessages((prev) => prev.filter((m: any) => m._id !== msg.messageId))
         }
       }
     }
 
     connect()
+
     return () => {
       setIsSocketConnected(false)
       if (socketRef.current) {
         socketRef.current.close()
       }
     }
-  }, [targetEmail, onRefreshContacts, onUnknownMessage])
+  }, [targetEmail, onRefreshContacts, onUnknownMessage, selfEmail])
 
   // Only auto-scroll if user is near the bottom or sends a message
   useEffect(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-    const threshold = 150; // px from bottom
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+    const container = messagesContainerRef.current
+    if (!container) return
+    const threshold = 150 // px from bottom
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold
     if (isNearBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }
-  }, [messages]);
+  }, [messages])
 
+  // Remove all state, handlers, and UI for editing and deleting messages
   const handleEditClick = (msgId: string, oldText: string) => {
-    setEditingId(msgId)
+    setEditingMsgId(msgId)
     setEditingText(oldText)
   }
 
   const handleEditSave = async (msgId: string) => {
-    if (!editingText.trim()) return
+    if (!editingText.trim()) {
+      toast.error("Message cannot be empty.")
+      return
+    }
     try {
-      const session = await getSession()
-      if (!session?.user?.email) return
-      const res = await axios.patch(`${process.env.NEXT_PUBLIC_WS_URL}/messages/` + msgId, { email: session.user.email, text: editingText.trim() }, { withCredentials: true });
-      const data = res.data as { data: { text: string, edited: boolean, editedAt: string } }
-      setMessages((prev) => prev.map((m: any) => (m._id === msgId ? { ...m, text: data.data.text, edited: true, editedAt: data.data.editedAt } : m)))
-      setEditingId(null)
-      setEditingText("")
-    } catch (err) {
-      toast.error("Failed to edit message")
+      const res = await axios.patch(`${API_BASE_URL}/api/messages/${msgId}`, { text: editingText }, { withCredentials: true })
+      const resData = res.data as { success?: boolean; error?: string }
+      if (resData && resData.success) {
+        setMessages((prev) =>
+          prev.map((m: any) =>
+            m._id === msgId ? { ...m, text: editingText, edited: true, editedAt: new Date().toISOString() } : m
+          )
+        )
+        setEditingMsgId(null)
+        setEditingText("")
+        toast.success("Message updated.")
+      } else {
+        toast.error(resData?.error || "Failed to update message.")
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Failed to update message.")
     }
   }
 
   const handleEditCancel = () => {
-    setEditingId(null)
+    setEditingMsgId(null)
     setEditingText("")
   }
 
@@ -338,22 +392,36 @@ export default function ChatBox({
   }
 
   // In the popover menu:
-  const handleDeleteMessage = async (msgId: string) => {
+  const handleDeleteMessage = async (msgId: string, everyone = false) => {
     try {
       setDeletingMessageIds((prev) => [...prev, msgId])
       await new Promise((resolve) => setTimeout(resolve, 300)) // Wait for animation
       const session = await getSession()
       if (!session?.user?.email) return
-      const res = await axios.delete(`${API_BASE_URL}/api/messages/` + msgId, { headers: { "Content-Type": "application/json" }, data: { email: session.user.email }, withCredentials: true } as any)
-      const resData = res.data as any;
+      let url = `${API_BASE_URL}/api/messages/` + msgId
+      if (everyone) {
+        url += '?everyone=true'
+      }
+      const res = await axios.delete(url, { withCredentials: true })
+      const resData = res.data as any
       if (resData && resData.success) {
-        const data = resData as { data: any }
-        setMessages((prev) => prev.map((m: any) => (m._id === msgId ? { ...m, deleted: true, deletedAt: data.data.deletedAt } : m)))
+        if (everyone) {
+          // Remove the message from UI immediately
+          setMessages((prev) => prev.filter((m: any) => m._id !== msgId))
+        } else {
+          // Notify websocket for real-time UI update
+          if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify({ type: "delete_for_me", messageId: msgId, userEmail: session.user.email }))
+          }
+          setMessages((prev) =>
+            prev.map((m: any) => (m._id === msgId ? { ...m, deleted: true, deletedAt: resData.deletedAt } : m)),
+          )
+        }
       } else {
         toast.error(resData?.error || "Failed to delete message")
       }
     } catch (err: any) {
-      if (err.response && err.response.status === 403) {
+      if (err && err.response && err.response.status === 403) {
         toast.error("You can only delete your own messages.")
       } else {
         toast.error("Failed to delete message")
@@ -367,7 +435,6 @@ export default function ChatBox({
     if (!fileUrl) {
       return
     }
-
     try {
       let downloadUrl = fileUrl
       if (fileUrl.includes("res.cloudinary.com")) {
@@ -379,25 +446,20 @@ export default function ChatBox({
           downloadUrl = fileUrl.replace("/upload/", "/upload/fl_attachment/")
         }
       }
-
       try {
         const response = await fetch(downloadUrl)
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
-
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
-
         const link = document.createElement("a")
         link.href = url
         link.download = fileName
         link.style.display = "none"
-
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-
         window.URL.revokeObjectURL(url)
       } catch (fetchError) {
         const link = document.createElement("a")
@@ -405,7 +467,6 @@ export default function ChatBox({
         link.download = fileName
         link.target = "_blank"
         link.rel = "noopener noreferrer"
-
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
@@ -456,10 +517,10 @@ export default function ChatBox({
   // Send message function (must be above usage)
   const sendMessage = async (text?: string, fileObj?: { url: string; name: string; type: string; size?: number }) => {
     if ((!text || !text.trim()) && !fileObj && !pendingFile) return
-    
+
     // Clear typing indicator
     setIsTyping(false)
-    
+
     // If there is a pending file, upload it first
     if (pendingFile && !fileObj) {
       setIsUploadingFile(true)
@@ -471,7 +532,13 @@ export default function ChatBox({
             "Content-Type": "multipart/form-data",
           },
         })
-        const data = res.data as { url?: string; error?: string; fileName?: string; fileType?: string; fileSize?: number }
+        const data = res.data as {
+          url?: string
+          error?: string
+          fileName?: string
+          fileType?: string
+          fileSize?: number
+        }
         if (data.url) {
           // Send the message with the uploaded file
           sendMessage(text, {
@@ -492,11 +559,13 @@ export default function ChatBox({
       }
       return
     }
+
     const msgObj: ChatMessage = {
       from: selfEmailRef.current || "You",
       text: text?.trim() || "",
     }
     if (fileObj) msgObj.file = fileObj
+
     const wsMsg: { type: string; text: string; file?: string } = { type: "chat", text: msgObj.text }
     if (msgObj.file) {
       wsMsg.file = JSON.stringify({
@@ -506,179 +575,198 @@ export default function ChatBox({
         size: msgObj.file.size,
       })
     }
+
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify(wsMsg))
     }
+
     setMessage("")
     setPendingFile(null)
     setPendingFilePreview(null)
-    
+
     // Scroll to bottom after sending
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }, 100)
   }
 
   // Helper for long press and tap (mobile)
   const handleTouchStart = (msgId: string) => {
-    if (window.innerWidth >= 768) return; // Only for mobile
+    if (window.innerWidth >= 768) return // Only for mobile
     longPressTimeout.current = setTimeout(() => {
-      setLongPressedMsgId(msgId);
-    }, 500); // 500ms for long press
-  };
+      setLongPressedMsgId(msgId)
+    }, 500) // 500ms for long press
+  }
+
   const handleTouchEnd = () => {
     if (longPressTimeout.current) {
-      clearTimeout(longPressTimeout.current);
-      longPressTimeout.current = null;
+      clearTimeout(longPressTimeout.current)
+      longPressTimeout.current = null
     }
-  };
-  const handleOverlayClose = () => setLongPressedMsgId(null);
+  }
+
+  const handleOverlayClose = () => setLongPressedMsgId(null)
 
   // NEW: Mobile tap handler to show Edit/Delete
   const handleMobileTap = (msgId: string) => {
     if (window.innerWidth < 768) {
-      setLongPressedMsgId((prev) => (prev === msgId ? null : msgId));
+      setLongPressedMsgId((prev) => (prev === msgId ? null : msgId))
     }
-  };
+  }
 
   // Mobile-specific handlers
   const handleInputFocus = () => {
-    setIsInputFocused(true);
+    setIsInputFocused(true)
     // Scroll to bottom when input is focused
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 300);
-  };
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }, 300)
+  }
 
   const handleInputBlur = () => {
-    setIsInputFocused(false);
-    setShowEmojiPicker(false);
-  };
+    setIsInputFocused(false)
+    setShowEmojiPicker(false)
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setMessage(e.target.value);
-    setIsTyping(true);
+    setMessage(e.target.value)
+    setIsTyping(true)
     // Clear typing indicator after 2 seconds of no typing
-    setTimeout(() => setIsTyping(false), 2000);
-  };
+    setTimeout(() => setIsTyping(false), 2000)
+  }
 
   // Swipe gesture handlers
   const handleTouchStartSwipe = (e: React.TouchEvent) => {
-    setSwipeStartX(e.touches[0].clientX);
-    setSwipeStartY(e.touches[0].clientY);
-  };
+    setSwipeStartX(e.touches[0].clientX)
+    setSwipeStartY(e.touches[0].clientY)
+  }
 
   const handleTouchMoveSwipe = (e: React.TouchEvent) => {
-    if (swipeStartX === null || swipeStartY === null) return;
-    
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const diffX = swipeStartX - currentX;
-    const diffY = swipeStartY - currentY;
-    
+    if (swipeStartX === null || swipeStartY === null) return
+
+    const currentX = e.touches[0].clientX
+    const currentY = e.touches[0].clientY
+    const diffX = swipeStartX - currentX
+    const diffY = swipeStartY - currentY
+
     // If horizontal swipe is greater than vertical and significant
     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
       // Right swipe (show contacts) - only if we're in a chat
       if (diffX < 0 && Math.abs(diffX) > 100) {
         // This could trigger a back action or show contacts
         // For now, we'll just prevent default to avoid conflicts
-        e.preventDefault();
+        e.preventDefault()
       }
     }
-  };
+  }
 
   const handleTouchEndSwipe = () => {
-    setSwipeStartX(null);
-    setSwipeStartY(null);
-  };
+    setSwipeStartX(null)
+    setSwipeStartY(null)
+  }
 
   // Keyboard event handlers
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage(message);
+      e.preventDefault()
+      sendMessage(message)
     }
     if (e.key === "Escape") {
-      inputRef.current?.blur();
-      setShowEmojiPicker(false);
+      inputRef.current?.blur()
+      setShowEmojiPicker(false)
     }
-  };
+  }
 
   // Auto-resize input for better mobile experience
   const adjustInputHeight = () => {
-    const input = inputRef.current;
+    const input = inputRef.current
     if (input) {
-      input.style.height = 'auto';
-      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+      input.style.height = "auto"
+      input.style.height = Math.min(input.scrollHeight, 120) + "px"
     }
-  };
+  }
 
   // Handle keyboard visibility on mobile
   useEffect(() => {
     const handleResize = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-
-    window.addEventListener('resize', handleResize);
-    handleResize();
-
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+      const vh = window.innerHeight * 0.01
+      document.documentElement.style.setProperty("--vh", `${vh}px`)
+    }
+    window.addEventListener("resize", handleResize)
+    handleResize()
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
   function formatLastSeen(lastSeen: string | Date | undefined) {
-    if (!lastSeen) return ''
-    const date = typeof lastSeen === 'string' ? new Date(lastSeen) : lastSeen
+    if (!lastSeen) return ""
+    const date = typeof lastSeen === "string" ? new Date(lastSeen) : lastSeen
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
-    if (diffMins < 1) return 'just now'
-    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
+    if (diffMins < 1) return "just now"
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? "s" : ""} ago`
     const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`
     return date.toLocaleString()
   }
 
   // Helper to send delivered/seen events
-  const sendStatusUpdate = (type: 'delivered' | 'seen', messageId: string) => {
+  const sendStatusUpdate = (type: "delivered" | "seen", messageId: string) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ type, messageId }));
+      socketRef.current.send(JSON.stringify({ type, messageId }))
     }
-  };
+  }
 
   // Send 'seen' for all messages not from me and not seen when chat is open or messages change
   useEffect(() => {
     messages.forEach((m: any) => {
-      if (m.from !== selfEmailRef.current && m.status !== 'seen' && m._id) {
-        sendStatusUpdate('seen', m._id);
+      if (m.from !== selfEmailRef.current && m.status !== "seen" && m._id) {
+        sendStatusUpdate("seen", m._id)
       }
-    });
-  }, [messages]);
+    })
+  }, [messages])
 
   // Helper to render ticks
   function renderTicks(status: string) {
-    if (status === 'seen') {
-      return <span title="Seen"><CheckCheck className="w-4 h-4 text-blue-500 inline align-middle" /></span>;
+    if (status === "seen") {
+      return (
+        <span title="Seen">
+          <CheckCheck className="w-4 h-4 text-blue-500 inline align-middle" />
+        </span>
+      )
     }
-    if (status === 'delivered') {
-      return <span title="Delivered"><CheckCheck className="w-4 h-4 text-gray-400 inline align-middle" /></span>;
+    if (status === "delivered") {
+      return (
+        <span title="Delivered">
+          <CheckCheck className="w-4 h-4 text-gray-400 inline align-middle" />
+        </span>
+      )
     }
     // sent or undefined
-    return <span title="Sent"><Check className="w-4 h-4 text-gray-400 inline align-middle" /></span>;
+    return (
+      <span title="Sent">
+        <Check className="w-4 h-4 text-gray-400 inline align-middle" />
+      </span>
+    )
   }
 
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteType, setDeleteType] = useState<"me" | "everyone">("me")
+  const [isClearingChat, setIsClearingChat] = useState(false)
 
   // Utility to extract YouTube video ID from a URL
   function extractYouTubeId(url: string): string | null {
     const match = url.match(
-      /(?:youtube\.com\/(?:[^/\n\s]+\/\\\S+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([\w-]{11})/
-    );
-    return match ? match[1] : null;
+      /(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([\w-]{11})/,
+    )
+    return match ? match[1] : null
   }
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" style={{height: '100dvh', maxHeight: '100dvh', overflow: 'hidden'}}>
+    <div
+      className="flex flex-col min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"
+      style={{ height: "100dvh", maxHeight: "100dvh", overflow: "hidden" }}
+    >
       {/* Header */}
       <div className="bg-white/90 backdrop-blur border-b border-white/30 shadow-sm py-3 sm:py-4 flex items-center gap-3 sm:gap-4 sticky top-0 z-10">
         <div className="flex-shrink-0">
@@ -697,17 +785,53 @@ export default function ChatBox({
           )}
         </div>
         <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => setUserInfoOpen(true)}>
-          <p className="text-base sm:text-lg font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">{contact?.name || targetEmail}</p>
-          <p className="text-xs sm:text-sm text-gray-500 truncate group-hover:text-blue-500 transition-colors">{targetEmail}</p>
+          <p className="text-base sm:text-lg font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">
+            {contact?.name || targetEmail}
+          </p>
+          <p className="text-xs sm:text-sm text-gray-500 truncate group-hover:text-blue-500 transition-colors">
+            {targetEmail}
+          </p>
           <p className="text-xs mt-0.5 sm:mt-1">
-            {contact?.isOnline
-              ? <span className="text-green-600 font-medium">Online</span>
-              : contact?.lastSeen
-                ? <span className="text-gray-400">Last seen {formatLastSeen(contact.lastSeen)}</span>
-                : <span className="text-gray-400">Offline</span>
-            }
+            {contact?.isOnline ? (
+              <span className="text-green-600 font-medium">Online</span>
+            ) : contact?.lastSeen ? (
+              <span className="text-gray-400">Last seen {formatLastSeen(contact.lastSeen)}</span>
+            ) : (
+              <span className="text-gray-400">Offline</span>
+            )}
           </p>
         </div>
+        {/* Clear Chat Button */}
+        <button
+          className="ml-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold border border-red-200 shadow-sm transition disabled:opacity-50"
+          onClick={async () => {
+            if (messages.length === 0) return;
+            if (!window.confirm("Are you sure you want to clear this chat? This will delete all messages for you (not for everyone).")) return;
+            setIsClearingChat(true);
+            try {
+              const res: any = await axios.delete(`${API_BASE_URL}/api/messages/clear?with=${encodeURIComponent(targetEmail)}`);
+              const data: { success?: boolean; error?: string } = res.data;
+              if (data && data.success) {
+                setMessages([]);
+                toast.success("Chat cleared!");
+              } else {
+                toast.error(data?.error || "Failed to clear chat");
+              }
+            } catch (err) {
+              if (err && (err as any).response?.data?.error) {
+                toast.error((err as any).response.data.error);
+              } else {
+                toast.error("Failed to clear chat");
+              }
+            } finally {
+              setIsClearingChat(false);
+            }
+          }}
+          disabled={isClearingChat || messages.length === 0}
+          title="Clear Chat (delete all messages for you)"
+        >
+          {isClearingChat ? "Clearing..." : "Clear Chat"}
+        </button>
         {/* Mobile back button */}
         <button
           className="md:hidden p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
@@ -721,22 +845,32 @@ export default function ChatBox({
       </div>
 
       {/* Messages */}
-      <div 
+      <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto py-4 space-y-3 sm:space-y-4 max-h-[calc(100dvh-120px)] min-h-0"
-        style={{ 
-          paddingBottom: isInputFocused ? '20px' : '10px',
-          scrollBehavior: 'smooth',
-          maxHeight: 'calc(100dvh - 120px)',
-          minHeight: 0
+        className="flex-1 overflow-y-auto py-4 space-y-3 sm:space-y-4 max-h-[calc(100dvh-120px)] min-h-0 relative z-0"
+        style={{
+          paddingBottom: isInputFocused ? "20px" : "10px",
+          scrollBehavior: "smooth",
+          maxHeight: "calc(100dvh - 120px)",
+          minHeight: 0,
         }}
         onClick={() => setActionMenuMsgId(null)}
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center mt-16 px-4">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-full flex items-center justify-center mb-4 sm:mb-6 shadow-lg">
-              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg
+                className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
               </svg>
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No messages yet</h3>
@@ -744,204 +878,227 @@ export default function ChatBox({
           </div>
         ) : (
           <div className="flex flex-col gap-3 sm:gap-4 max-w-full sm:mx-3 mx-auto">
-            {messages.map((msg, i) => {
-              const isOwnMessage = msg.from === selfEmailRef.current
-              const isDeleting = deletingMessageIds.includes((msg as any)._id)
-              const fileUrl = typeof msg.file === "string" ? msg.file : msg.file?.url
-              const fileName = (msg as any).fileName || (typeof msg.file === "object" ? msg.file?.name : undefined) || "File"
-              const fileType = (msg as any).fileType || (typeof msg.file === "object" ? msg.file?.type : undefined) || ""
-              const fileSize = (msg as any).fileSize || (typeof msg.file === "object" ? msg.file?.size : undefined) || 0
-              const downloadFileName = getProperFileName(fileName, fileType)
-              const isLongPressed = longPressedMsgId === (msg as any)._id
-              const isDeleted = (msg as any).deleted;
-              const isEdited = (msg as any).edited;
-              return (
-                <div
-                  key={i}
-                  className={`flex w-full flex-col ${isOwnMessage ? "items-end" : "items-start"}`}
-                >
-                  <div
-                    className={`relative group max-w-[85%] sm:max-w-[80%] px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl shadow-md break-words transition-all duration-300 ${
-                      isOwnMessage
-                        ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white ml-auto"
-                        : "bg-white text-gray-900 border border-gray-100 mr-auto"
-                    } ${isDeleting ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100"}`}
-                    onTouchStart={isOwnMessage && !isDeleted ? () => { handleTouchStart((msg as any)._id); setSelectedMsgForAction({ id: (msg as any)._id, text: msg.text, file: msg.file }); } : undefined}
-                    onDoubleClick={isOwnMessage && !isDeleted ? (e => { e.stopPropagation(); setActionMenuMsgId((msg as any)._id); }) : undefined}
-                    onContextMenu={isOwnMessage && !isDeleted ? (e => { e.preventDefault(); setActionMenuMsgId((msg as any)._id); }) : undefined}
-                  >
-                    {/* Contextual popover menu */}
-                    {isOwnMessage && !isDeleted && actionMenuMsgId === (msg as any)._id && (
-                      <div
-                        className="absolute top-8 right-2 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[120px] animate-fade-in"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-blue-50 text-gray-800 rounded-t-lg"
-                          onClick={() => {
-                            handleEditClick((msg as any)._id, msg.text);
-                            setActionMenuMsgId(null);
-                          }}
-                          disabled={!!msg.file}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 rounded-b-lg"
-                          onClick={() => {
-                            setShowDeleteModal(true);
-                            setSelectedMsgForAction({ id: (msg as any)._id, text: msg.text, file: msg.file });
-                            setActionMenuMsgId(null);
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                    {/* Deleted message placeholder */}
-                    {isDeleted ? (
-                      <div className="italic text-gray-400 text-sm py-2 text-center w-full">This message was deleted</div>
-                    ) : editingId === (msg as any)._id ? (
-                      <div className="flex flex-col space-y-2 animate-fade-in bg-blue-50 p-3 rounded-xl shadow-inner">
-                        <input
-                          type="text"
-                          className="w-full border border-blue-400 text-gray-900 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base bg-white shadow-sm"
-                          value={editingText}
-                          onChange={e => setEditingText(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') handleEditSave((msg as any)._id)
-                            if (e.key === 'Escape') handleEditCancel()
-                          }}
-                          autoFocus
-                          placeholder="Edit your message..."
-                        />
-                        <div className="flex space-x-2 mt-1 justify-end">
-                          <button
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold active:scale-95 transition-transform shadow"
-                            onClick={() => handleEditSave((msg as any)._id)}
-                          >
-                            Save
-                          </button>
-                          <button
-                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-semibold active:scale-95 transition-transform shadow"
-                            onClick={handleEditCancel}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {fileUrl ? (
-                          <div className="mb-2">
-                            {fileType && fileType.startsWith("image/") ? (
-                              <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block">
-                                <img
-                                  src={fileUrl || "/placeholder.svg"}
-                                  alt={fileName}
-                                  className="max-h-40 sm:max-h-48 max-w-full rounded-lg mb-2 shadow-sm border border-gray-200"
-                                />
-                              </a>
-                            ) : fileType && fileType.startsWith("video/") ? (
-                              <video
-                                src={fileUrl}
-                                controls
-                                className="max-h-48 max-w-full rounded-lg mb-2 shadow-sm border border-gray-200"
-                                preload="metadata"
-                              >
-                                Your browser does not support the video tag.
-                              </video>
-                            ) : (
-                              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 max-w-full">
-                                {getFileIcon(fileType)}
-                                <div className="flex-1 min-w-0 overflow-hidden">
-                                  <p className="text-sm font-medium text-gray-900 truncate">{fileName}</p>
-                                  <p className="text-xs text-gray-500">{formatFileSize(fileSize)}</p>
-                                </div>
-                              </div>
-                            )}
-                            <a
-                              href={fileUrl}
-                              className={`flex w-full justify-center items-center gap-2 text-sm font-semibold mt-2 py-2 rounded-lg transition-all duration-200 shadow-sm border border-blue-200 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 ${
-                                isOwnMessage ? "text-blue-100 hover:text-white bg-gradient-to-r from-blue-500 to-indigo-500 border-blue-300" : "text-blue-700 hover:text-blue-900"
-                              }`}
-                              style={{ minWidth: 0 }}
-                              download={downloadFileName}
-                              onClick={e => {
-                                e.preventDefault()
-                                handleFileDownload(fileUrl, downloadFileName)
-                              }}
-                            >
-                              <span className="text-lg">📎</span>
-                              <span>Download</span>
-                            </a>
-                          </div>
-                        ) : null}
-                        {/* Message content */}
-                        {(() => {
-                          const urls = Array.from(msg.text?.matchAll(/https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+/gi) || []).map(m => m[0]);
-                          const textWithoutLinks = msg.text?.replace(/https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+/gi, '').trim() || '';
-                          function extractYouTubeId(url: string): string | null {
-                            const match = url.match(/(?:youtube\.com\/(?:[^/\n\s]+\/\\S+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([\w-]{11})/);
-                            return match ? match[1] : null;
-                          }
-                          return (
-                            <>
-                              {textWithoutLinks && (
-                                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                                  {textWithoutLinks} {isEdited && <span className="text-xs italic text-gray-300 ml-2">(edited)</span>}
-                                </p>
-                              )}
-                              {urls.map((url, idx) => {
-                                const ytId = extractYouTubeId(url);
-                                if (ytId) {
-                                  return (
-                                    <div className="mt-2" key={"yt-"+idx}>
-                                      <iframe
-                                        width="320"
-                                        height="180"
-                                        src={`https://www.youtube.com/embed/${ytId}`}
-                                        frameBorder="0"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowFullScreen
-                                        title="YouTube video"
-                                        className="rounded-lg shadow"
-                                        onClick={e => e.stopPropagation()}
-                                      />
-                                    </div>
-                                  );
-                                } else {
-                                  return (
-                                    <div className="mt-2" key={"preview-"+idx}>
-                                      <LinkPreview url={url} variant={isOwnMessage ? 'sent' : 'received'} />
-                                    </div>
-                                  );
-                                }
-                              })}
-                            </>
-                          );
-                        })()}
-                      </>
-                    )}
-                  </div>
-                  {/* Timestamp below the bubble */}
-                  {msg.createdAt && !isDeleted && (
-                    <span
-                      className={`mt-1 text-xs text-gray-400 select-none ${isOwnMessage ? 'text-right' : 'text-left'}`}
-                      style={{ width: '100%' }}
+            {messages
+              .filter((msg: any) => {
+                // Hide messages deleted for this user
+                if (msg.deletedFor && Array.isArray(msg.deletedFor) && selfEmail) {
+                  return !msg.deletedFor.includes(selfEmail);
+                }
+                return !msg.deleted;
+              })
+              .map((msg, i) => {
+                const isOwnMessage = msg.from === selfEmailRef.current
+                const isDeleting = deletingMessageIds.includes((msg as any)._id)
+                const fileUrl = typeof msg.file === "string" ? msg.file : msg.file?.url
+                const fileName =
+                  (msg as any).fileName || (typeof msg.file === "object" ? msg.file?.name : undefined) || "File"
+                const fileType =
+                  (msg as any).fileType || (typeof msg.file === "object" ? msg.file?.type : undefined) || ""
+                const fileSize =
+                  (msg as any).fileSize || (typeof msg.file === "object" ? msg.file?.size : undefined) || 0
+                const downloadFileName = getProperFileName(fileName, fileType)
+                const isLongPressed = longPressedMsgId === (msg as any)._id
+                const isEdited = (msg as any).edited
+
+                return (
+                  <div key={i} className={`flex w-full flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
+                    <div
+                      className={`relative z-0 group max-w-[85%] sm:max-w-[80%] px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl shadow-md break-words transition-all duration-300 ${
+                        isOwnMessage
+                          ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white ml-auto"
+                          : "bg-white text-gray-900 border border-gray-100 mr-auto"
+                      } ${isDeleting ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100"}`}
+                      onTouchStart={
+                        !isDeleting
+                          ? () => {
+                              handleTouchStart((msg as any)._id)
+                              setSelectedMsgForAction({ id: (msg as any)._id, text: msg.text, file: msg.file })
+                            }
+                          : undefined
+                      }
+                      onDoubleClick={
+                        !isDeleting
+                          ? (e) => {
+                              e.stopPropagation()
+                              setActionMenuMsgId((msg as any)._id)
+                            }
+                          : undefined
+                      }
+                      onContextMenu={
+                        !isDeleting
+                          ? (e) => {
+                              e.preventDefault()
+                              setActionMenuMsgId((msg as any)._id)
+                            }
+                          : undefined
+                      }
                     >
+                      {/* Contextual popover menu - FIXED Z-INDEX */}
+                      {!isDeleting && actionMenuMsgId === (msg as any)._id && (
+                        <>
+                          {/* Overlay to close menu when clicking outside - render BEFORE the popover */}
+                          <div
+                            className="fixed inset-0 bg-transparent z-[99998] pointer-events-auto"
+                            onClick={() => setActionMenuMsgId(null)}
+                          />
+                          <div
+                            className="fixed bg-white border border-gray-200 rounded-lg shadow-2xl pointer-events-auto min-w-[220px] w-[220px] animate-fade-in"
+                            style={{
+                              zIndex: 99999,
+                              top: "50%",
+                              left: "50%",
+                              transform: "translate(-50%, -50%)",
+                              isolation: "isolate",
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {isOwnMessage ? (
+                              <>
+                                <button
+                                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-blue-50 text-gray-800 rounded-t-lg disabled:opacity-50"
+                                  onClick={() => {
+                                    handleEditClick((msg as any)._id, msg.text)
+                                    setActionMenuMsgId(null)
+                                  }}
+                                  disabled={!!msg.file}
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-50 text-red-600 border-t border-gray-200"
+                                  onClick={() => {
+                                    setShowDeleteModal(true)
+                                    setSelectedMsgForAction({ id: (msg as any)._id, text: msg.text, file: msg.file })
+                                    setDeleteType("me")
+                                    setActionMenuMsgId(null)
+                                  }}
+                                >
+                                  <X className="w-4 h-4" />
+                                  <span>Delete for Me</span>
+                                </button>
+                                <button
+                                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-50 text-red-600 rounded-b-lg border-t border-gray-200"
+                                  onClick={() => {
+                                    setShowDeleteModal(true)
+                                    setSelectedMsgForAction({ id: (msg as any)._id, text: msg.text, file: msg.file })
+                                    setDeleteType("everyone")
+                                    setActionMenuMsgId(null)
+                                  }}
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  <span>Delete for Everyone</span>
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-50 text-red-600 rounded-lg"
+                                onClick={() => {
+                                  setShowDeleteModal(true)
+                                  setSelectedMsgForAction({ id: (msg as any)._id, text: msg.text, file: msg.file })
+                                  setDeleteType("me")
+                                  setActionMenuMsgId(null)
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                                <span>Delete for Me</span>
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Deleted message placeholder removed */}
+                      {/* Message content */}
                       {(() => {
-                        const date = new Date(msg.createdAt!);
-                        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const urls = Array.from(
+                          msg.text?.matchAll(/https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+/gi) || [],
+                        ).map((m) => m[0])
+                        const textWithoutLinks =
+                          msg.text?.replace(/https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+/gi, "").trim() || ""
+
+                        function extractYouTubeId(url: string): string | null {
+                          const match = url.match(
+                            /(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([\w-]{11})/,
+                          )
+                          return match ? match[1] : null
+                        }
+
+                        return (
+                          <>
+                            {editingMsgId === (msg as any)._id ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-900"
+                                  value={editingText}
+                                  onChange={e => setEditingText(e.target.value)}
+                                  maxLength={1000}
+                                  autoFocus
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter" && !e.shiftKey) handleEditSave((msg as any)._id)
+                                    if (e.key === "Escape") handleEditCancel()
+                                  }}
+                                  style={{ minWidth: 120 }}
+                                />
+                                <button className="text-blue-600 font-semibold px-2" onClick={() => handleEditSave((msg as any)._id)}>
+                                  Save
+                                </button>
+                                <button className="text-gray-400 px-2" onClick={handleEditCancel}>
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                {textWithoutLinks} {isEdited && <span className="text-xs italic text-gray-300 ml-2">(edited)</span>}
+                              </p>
+                            )}
+                            {urls.map((url, idx) => {
+                              const ytId = extractYouTubeId(url)
+                              if (ytId) {
+                                return (
+                                  <div className="mt-2 relative" key={"yt-" + idx} style={{ zIndex: 1 }}>
+                                    <iframe
+                                      width="320"
+                                      height="180"
+                                      src={`https://www.youtube.com/embed/${ytId}`}
+                                      frameBorder="0"
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                      allowFullScreen
+                                      title="YouTube video"
+                                      className="rounded-lg shadow"
+                                      style={{ zIndex: 1, position: "relative" }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </div>
+                                )
+                              } else {
+                                return (
+                                  <div className="mt-2" key={"preview-" + idx}>
+                                    <LinkPreview url={url} variant={isOwnMessage ? "sent" : "received"} />
+                                  </div>
+                                )
+                              }
+                            })}
+                          </>
+                        )
                       })()}
-                    </span>
-                  )}
-                  {isOwnMessage && !isDeleted && (
-                    <span className="ml-1 align-middle">{renderTicks((msg as any).status)}</span>
-                  )}
-                </div>
-              )
-            })}
+                    </div>
+                    {/* Timestamp below the bubble */}
+                    {msg.createdAt && (
+                      <span
+                        className={`mt-1 text-xs text-gray-400 select-none ${isOwnMessage ? "text-right" : "text-left"}`}
+                        style={{ width: "100%" }}
+                      >
+                        {(() => {
+                          const date = new Date(msg.createdAt!)
+                          return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        })()}
+                      </span>
+                    )}
+                    {isOwnMessage && <span className="ml-1 align-middle">{renderTicks((msg as any).status)}</span>}
+                  </div>
+                )
+              })}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -975,7 +1132,7 @@ export default function ChatBox({
               disabled={!isSocketConnected || isUploadingFile || !!pendingFile}
             />
           </button>
-          
+
           <div className="flex-1 relative">
             <input
               ref={inputRef}
@@ -988,10 +1145,10 @@ export default function ChatBox({
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               disabled={!isSocketConnected || isUploadingFile}
-              style={{ minHeight: '44px' }}
+              style={{ minHeight: "44px" }}
             />
           </div>
-          
+
           <button
             onClick={() => sendMessage(message)}
             className="p-2.5 sm:p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg active:scale-95"
@@ -1000,12 +1157,16 @@ export default function ChatBox({
             <Send className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </button>
         </div>
-        
+
         {/* Pending file preview below input */}
         {pendingFile && (
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 mt-3 max-w-lg mx-auto">
             {pendingFilePreview ? (
-              <img src={pendingFilePreview} alt={pendingFile.name} className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded" />
+              <img
+                src={pendingFilePreview || "/placeholder.svg"}
+                alt={pendingFile.name}
+                className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded"
+              />
             ) : (
               getFileIcon(pendingFile.type)
             )}
@@ -1025,19 +1186,27 @@ export default function ChatBox({
           </div>
         )}
       </div>
-      
-      <UserInfoBox open={userInfoOpen} onClose={() => setUserInfoOpen(false)} user={{
-        name: contact?.name || targetEmail.split('@')[0],
-        email: contact?.email || targetEmail,
-        image: contact?.image || null,
-        bio: contact?.bio || '',
-      }} />
+
+      <UserInfoBox
+        open={userInfoOpen}
+        onClose={() => setUserInfoOpen(false)}
+        user={{
+          name: contact?.name || targetEmail.split("@")[0],
+          email: contact?.email || targetEmail,
+          image: contact?.image || null,
+          bio: contact?.bio || "",
+        }}
+      />
 
       {showDeleteModal && selectedMsgForAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-xs animate-fadeIn">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Message?</h3>
-            <p className="text-gray-600 mb-4">Are you sure you want to delete this message? This action cannot be undone.</p>
+            <p className="text-gray-600 mb-4">
+              {deleteType === "everyone"
+                ? "Are you sure you want to delete this message for everyone? This action cannot be undone."
+                : "Are you sure you want to delete this message for yourself? This action cannot be undone."}
+            </p>
             <div className="flex justify-end gap-2">
               <button
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition"
@@ -1046,14 +1215,14 @@ export default function ChatBox({
                 Cancel
               </button>
               <button
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition"
+                className={`px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition`}
                 onClick={() => {
-                  if (selectedMsgForAction?.id) handleDeleteMessage(selectedMsgForAction.id);
-                  setShowDeleteModal(false);
-                  setSelectedMsgForAction(null);
+                  if (selectedMsgForAction?.id) handleDeleteMessage(selectedMsgForAction.id, deleteType === "everyone")
+                  setShowDeleteModal(false)
+                  setSelectedMsgForAction(null)
                 }}
               >
-                Delete
+                {deleteType === "everyone" ? "Delete for Everyone" : "Delete for Me"}
               </button>
             </div>
           </div>
