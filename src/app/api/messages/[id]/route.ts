@@ -19,8 +19,10 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     if (message.from !== session.user.email) {
       return NextResponse.json({ error: 'Forbidden: Only the sender can delete this message.' }, { status: 403 });
     }
-    await Message.findByIdAndDelete(messageId);
-    return NextResponse.json({ success: true, message: 'Message deleted successfully.' });
+    message.deleted = true;
+    message.deletedAt = new Date();
+    await message.save();
+    return NextResponse.json({ success: true, message: 'Message deleted successfully.', data: message });
   } catch (error) {
     console.error('Error deleting message:', error);
     return NextResponse.json({ error: 'Failed to delete message.' }, { status: 500 });
@@ -47,8 +49,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: 'Text is required.' }, { status: 400 });
     }
     message.text = body.text.trim();
+    message.edited = true;
+    message.editedAt = new Date();
     await message.save();
-    return NextResponse.json({ success: true, data: { text: message.text } });
+    return NextResponse.json({ success: true, data: { text: message.text, edited: true, editedAt: message.editedAt } });
   } catch (error) {
     console.error('Error updating message:', error);
     return NextResponse.json({ error: 'Failed to update message.' }, { status: 500 });

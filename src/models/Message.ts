@@ -9,6 +9,12 @@ const messageSchema = new mongoose.Schema({
     name: String,
     type: String
   },
+  edited: { type: Boolean, default: false },
+  editedAt: { type: Date },
+  deleted: { type: Boolean, default: false },
+  deletedAt: { type: Date },
 }, { timestamps: true });
+
+messageSchema.index({ roomId: 1, createdAt: 1 });
 
 export const Message = mongoose.models.Message || mongoose.model("Message", messageSchema); 

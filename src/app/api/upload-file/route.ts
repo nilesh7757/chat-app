@@ -28,10 +28,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    // Validate file size (10MB limit)
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    // Validate file size (10MB for images/docs, 50MB for videos)
+    let maxSize = 10 * 1024 * 1024; // 10MB default
+    const videoTypes = [
+      'video/mp4', 'video/webm', 'video/ogg'
+    ];
+    if (videoTypes.includes(file.type)) {
+      maxSize = 50 * 1024 * 1024; // 50MB for videos
+    }
     if (file.size > maxSize) {
-      return NextResponse.json({ error: 'File size must be less than 10MB' }, { status: 400 });
+      return NextResponse.json({ error: `File size must be less than ${maxSize / (1024 * 1024)}MB` }, { status: 400 });
     }
 
     // Validate file type
@@ -48,12 +54,13 @@ export async function POST(request: NextRequest) {
       'application/rtf', // .rtf
       'application/x-zip-compressed', 'application/zip',
       'application/vnd.rar',
-      'application/octet-stream' // fallback for some docs
+      'application/octet-stream', // fallback for some docs
+      ...videoTypes // add video types
     ];
     
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json({ 
-        error: 'File type not supported. Please upload images, PDFs, documents, or text files.' 
+        error: 'File type not supported. Please upload images, videos, PDFs, documents, or text files.' 
       }, { status: 400 });
     }
 
@@ -62,7 +69,9 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
 
     // Determine resource type based on file type
-    const resourceType = file.type.startsWith('image/') ? 'image' : 'raw';
+    let resourceType: 'image' | 'video' | 'raw' = 'raw';
+    if (file.type.startsWith('image/')) resourceType = 'image';
+    else if (videoTypes.includes(file.type)) resourceType = 'video';
 
     // Upload to Cloudinary
     const uploadRes = await new Promise<CloudinaryUploadResult>((resolve, reject) => {
