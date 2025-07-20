@@ -38,7 +38,7 @@ export async function GET() {
 
     // Find all other participants (senders or recipients)
     const otherEmails = new Set<string>();
-    messages.forEach(msg => {
+    messages.forEach((msg: any) => {
       const [email1, email2] = msg.roomId.split('+');
       if (email1 === userEmail) {
         otherEmails.add(email2);

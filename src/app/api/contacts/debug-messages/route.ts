@@ -23,13 +23,13 @@ export async function GET(request: NextRequest) {
       .limit(limit);
     const total = await Message.countDocuments({ roomId: { $regex: email } });
     // Filter out messages deleted for all or for this user
-    const filteredMessages = messages.filter(m => {
+    const filteredMessages = messages.filter((m: any) => {
       if (m.deletedForAll || m.deleted) return false;
       if (Array.isArray(m.deletedFor) && m.deletedFor.includes(email)) return false;
       return true;
     });
     // Map messages to include only relevant fields, especially deletedFor
-    const mappedMessages = filteredMessages.map(m => ({
+    const mappedMessages = filteredMessages.map((m: any) => ({
       _id: m._id,
       from: m.from,
       text: m.text,
