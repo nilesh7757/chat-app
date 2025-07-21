@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectDB } from '@/lib/mongodb';
 import { User } from '@/models/User';
-import { Message } from '@/models/Message';
+import Message from '@/models/Message';
 
 interface Contact {
   email: string;
