@@ -940,11 +940,12 @@ export default function ChatBox({
           <div className="flex flex-col gap-3 sm:gap-4 max-w-full sm:mx-3 mx-auto">
             {messages
               .filter((msg: any) => {
-                // Hide messages deleted for this user
                 const currentUser = selfEmailRef.current;
-                if (msg.deletedFor && Array.isArray(msg.deletedFor) && currentUser) {
-                  return !msg.deletedFor.includes(currentUser);
-                }
+                // Deleted for all — always hide
+                if (msg.deletedForAll) return false;
+                // Deleted only for current user
+                if (msg.deletedFor?.includes(currentUser)) return false;
+                // General fallback — hide if globally marked deleted
                 return !msg.deleted;
               })
               .map((msg, i) => {
