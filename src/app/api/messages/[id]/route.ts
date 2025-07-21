@@ -41,7 +41,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       // We'll infer the other participant from roomId and message.from
       let participants = [];
       if (message.roomId && typeof message.roomId === 'string') {
-        participants = message.roomId.split('+');
+        participants = message.roomId.split("--");
       }
       // Remove empty strings and duplicates
       participants = Array.from(new Set(participants.filter(Boolean)));

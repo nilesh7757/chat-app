@@ -408,8 +408,9 @@ export default function ChatBox({
           if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
             socketRef.current.send(JSON.stringify({ type: "delete_for_me", messageId: msgId, userEmail: session.user.email }))
           }
-          // Remove the message from UI for the current user
-          setMessages((prev) => prev.filter((m: any) => m._id !== msgId))
+          setMessages((prev) =>
+            prev.map((m: any) => (m._id === msgId ? { ...m, deleted: true, deletedAt: resData.deletedAt } : m)),
+          )
         }
       } else {
         toast.error(resData?.error || "Failed to delete message")

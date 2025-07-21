@@ -16,7 +16,7 @@ const MessageSchema = new mongoose.Schema(
     editedAt: { type: Date },
     deleted: { type: Boolean, default: false },
     deletedAt: { type: Date },
-    deletedFor: { type: [String], default: [] }, // Array of user emails who deleted this message for themselves
+    deletedFor: [{ type: String }], // Array of user emails who deleted this message for themselves
     deletedForAll: { type: Boolean, default: false }, // True if message is deleted for everyone
   },
   {
