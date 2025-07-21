@@ -211,57 +211,66 @@ export default function ChatBox({
 
   useEffect(() => {
     if (!selfEmail) return;
-    const connect = async () => {
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001"
-      const socket = new WebSocket(wsUrl)
-      socketRef.current = socket
+    let triedBackup = false;
+    let socket: WebSocket | null = null;
+    const primaryWS = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
+    const backupWS = process.env.NEXT_PUBLIC_WS_BACKUP_URL || "wss://ws-chat-server-production.up.railway.app/";
+
+    function connectWebSocket(url: string) {
+      socket = new WebSocket(url);
+      socketRef.current = socket;
 
       socket.onopen = () => {
-        setIsSocketConnected(true)
+        setIsSocketConnected(true);
+        triedBackup = false;
         // Send join message immediately after connection
         socket.send(
           JSON.stringify({
             type: "join",
             self: selfEmail,
             target: targetEmail,
-          }),
-        )
-      }
+          })
+        );
+      };
 
-      socket.onerror = (error) => {
-        setIsSocketConnected(false)
-      }
+      socket.onerror = () => {
+        setIsSocketConnected(false);
+        if (!triedBackup && url === primaryWS) {
+          triedBackup = true;
+          connectWebSocket(backupWS);
+        }
+      };
 
-      socket.onclose = (event) => {
-        setIsSocketConnected(false)
-      }
+      socket.onclose = () => {
+        setIsSocketConnected(false);
+      };
 
       socket.onmessage = (event) => {
-        const msg = JSON.parse(event.data)
+        const msg = JSON.parse(event.data);
         if (msg.type === "chat") {
           setMessages((prev) => {
             const isDuplicate = prev.some((m) => {
               if (m.file && msg.file) {
-                const timeDiff = Math.abs(new Date(m.createdAt || 0).getTime() - new Date(msg.createdAt || 0).getTime())
-                const isDuplicateFile = m.file.url === msg.file.url && m.from === msg.from && timeDiff < 2000
-                if (isDuplicateFile) return true
+                const timeDiff = Math.abs(new Date(m.createdAt || 0).getTime() - new Date(msg.createdAt || 0).getTime());
+                const isDuplicateFile = m.file.url === msg.file.url && m.from === msg.from && timeDiff < 2000;
+                if (isDuplicateFile) return true;
               }
               if (m.text && msg.text) {
-                const timeDiff = Math.abs(new Date(m.createdAt || 0).getTime() - new Date(msg.createdAt || 0).getTime())
-                const isDuplicateText = m.text === msg.text && m.from === msg.from && timeDiff < 2000
-                if (isDuplicateText) return true
+                const timeDiff = Math.abs(new Date(m.createdAt || 0).getTime() - new Date(msg.createdAt || 0).getTime());
+                const isDuplicateText = m.text === msg.text && m.from === msg.from && timeDiff < 2000;
+                if (isDuplicateText) return true;
               }
-              return false
-            })
+              return false;
+            });
             if (isDuplicate) {
-              return prev
+              return prev;
             }
-            const newMessages = [...prev, msg]
+            const newMessages = [...prev, msg];
             if (msg.from !== selfEmail && msg._id) {
-              sendStatusUpdate("delivered", msg._id)
+              sendStatusUpdate("delivered", msg._id);
             }
-            return newMessages
-          })
+            return newMessages;
+          });
         }
         if (msg.type === "history") {
           setMessages(
@@ -271,22 +280,22 @@ export default function ChatBox({
           );
           msg.messages.forEach((m: any) => {
             if (m.from !== selfEmail && m.status !== "delivered" && m.status !== "seen" && m._id) {
-              sendStatusUpdate("delivered", m._id)
+              sendStatusUpdate("delivered", m._id);
             }
-          })
+          });
         }
         if (msg.type === "contact_added") {
-          setContactNotification(msg.message)
-          setTimeout(() => setContactNotification(null), 3000)
+          setContactNotification(msg.message);
+          setTimeout(() => setContactNotification(null), 3000);
           if (onRefreshContacts) {
-            onRefreshContacts()
+            onRefreshContacts();
           }
         }
         if (msg.type === "unknown_message") {
-          setContactNotification(`New message from ${msg.fromName || msg.from}`)
-          setTimeout(() => setContactNotification(null), 5000)
+          setContactNotification(`New message from ${msg.fromName || msg.from}`);
+          setTimeout(() => setContactNotification(null), 5000);
           if (onUnknownMessage) {
-            onUnknownMessage()
+            onUnknownMessage();
           }
         }
         if (msg.type === "status") {
@@ -298,33 +307,33 @@ export default function ChatBox({
                     isOnline: msg.isOnline,
                     lastSeen: msg.lastSeen ? new Date(msg.lastSeen) : prev.lastSeen,
                   }
-                : prev,
-            )
+                : prev
+            );
           }
         }
         if (msg.type === "status_update") {
-          setMessages((prev) => prev.map((m: any) => (m._id === msg.messageId ? { ...m, status: msg.status } : m)))
+          setMessages((prev) => prev.map((m: any) => (m._id === msg.messageId ? { ...m, status: msg.status } : m)));
         }
         // NEW: Handle delete for everyone
         if (msg.type === "delete_for_everyone" && msg.messageId) {
-          setMessages((prev) => prev.filter((m: any) => m._id !== msg.messageId))
+          setMessages((prev) => prev.filter((m: any) => m._id !== msg.messageId));
         }
         // NEW: Handle delete for me (real-time)
         if (msg.type === "delete_for_me" && msg.messageId) {
-          setMessages((prev) => prev.filter((m: any) => m._id !== msg.messageId))
+          setMessages((prev) => prev.filter((m: any) => m._id !== msg.messageId));
         }
-      }
+      };
     }
 
-    connect()
+    connectWebSocket(primaryWS);
 
     return () => {
-      setIsSocketConnected(false)
+      setIsSocketConnected(false);
       if (socketRef.current) {
-        socketRef.current.close()
+        socketRef.current.close();
       }
-    }
-  }, [targetEmail, onRefreshContacts, onUnknownMessage, selfEmail])
+    };
+  }, [targetEmail, onRefreshContacts, onUnknownMessage, selfEmail]);
 
   // Only auto-scroll if user is near the bottom or sends a message
   useEffect(() => {
