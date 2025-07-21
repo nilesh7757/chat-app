@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { connectDB } from "@/lib/mongodb"
-import { Message } from "@/models/Message"
+import Message from "@/models/Message"
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   await connectDB();
