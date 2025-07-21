@@ -941,8 +941,9 @@ export default function ChatBox({
             {messages
               .filter((msg: any) => {
                 // Hide messages deleted for this user
-                if (msg.deletedFor && Array.isArray(msg.deletedFor) && selfEmail) {
-                  return !msg.deletedFor.includes(selfEmail);
+                const currentUser = selfEmailRef.current;
+                if (msg.deletedFor && Array.isArray(msg.deletedFor) && currentUser) {
+                  return !msg.deletedFor.includes(currentUser);
                 }
                 return !msg.deleted;
               })
