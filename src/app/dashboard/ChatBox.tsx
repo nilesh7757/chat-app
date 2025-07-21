@@ -257,20 +257,6 @@ export default function ChatBox({
       return;
     }
 
-    const msgObj: ChatMessage = {
-      from: selfEmailRef.current || "You",
-      text: text?.trim() || "",
-    };
-    if (fileObj) msgObj.file = fileObj;
-
-    setMessage("");
-    setPendingFile(null);
-    setPendingFilePreview(null);
-    setMessages((prev) => [...prev, msgObj]);
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
-
     // If AI contact, call Gemini API
     if (isAIContact) {
       if (!GOOGLE_AI_API_KEY) {
@@ -289,7 +275,7 @@ export default function ChatBox({
         const aiRes = await axios.post<GeminiResponse>(
           GOOGLE_AI_API_URL,
           {
-            contents: [{ parts: [{ text: msgObj.text }] }],
+            contents: [{ parts: [{ text: text?.trim() || '' }] }],
           },
           {
             headers: {
@@ -318,6 +304,32 @@ export default function ChatBox({
         ]);
       }
       return;
+    }
+
+    // Save message to backend
+    try {
+      const res = await axios.post('/api/messages', {
+        text: text?.trim() || '',
+        to: targetEmail,
+        file: fileObj ? fileObj : undefined,
+      });
+      const data: any = res.data;
+      if (data && data.success && data.message) {
+        setMessages((prev) => {
+          const updated = [...prev, data.message];
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+          return updated;
+        });
+        setMessage("");
+        setPendingFile(null);
+        setPendingFilePreview(null);
+      } else {
+        toast.error(data?.error || 'Failed to send message');
+      }
+    } catch (err) {
+      toast.error('Failed to send message');
     }
   }
 
