@@ -220,9 +220,16 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter email address"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm mobile-input"
+              className="flex-1 px-5 py-3 border-2 border-blue-500 bg-blue-50 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-300 focus:border-blue-700 text-base font-semibold shadow-lg transition-all duration-200 mobile-input"
+              style={{ boxShadow: '0 2px 12px 0 rgba(59,130,246,0.10)' }}
               onKeyDown={(e) => e.key === 'Enter' && addContact()}
             />
+            {/* Optional: Add an email icon for better visibility */}
+            {/* <span className="flex items-center px-2 text-blue-500">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 12l-4-4-4 4m0 0l4 4 4-4" />
+              </svg>
+            </span> */}
             <button
               onClick={addContact}
               disabled={isLoading || !email.trim()}
@@ -324,19 +331,22 @@ export default function ContactList({ contacts, setContacts, refreshTrigger, onC
                   <p className="text-sm font-medium text-gray-900 truncate">{contact.name}</p>
                   <p className="text-xs text-gray-500 truncate">{contact.email}</p>
                 </div>
-                <button
-                  onClick={e => {
-                    e.stopPropagation();
-                    setPendingDeleteEmail(contact.email);
-                    setShowDeleteModal(true);
-                  }}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors duration-200 active:scale-95 touch-feedback border border-gray-200 bg-white shadow-sm ml-2"
-                  title="Delete contact"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
-                  </svg>
-                </button>
+                {/* Hide delete button for YouRAi */}
+                {contact.email !== 'yourai@ai.local' && (
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      setPendingDeleteEmail(contact.email);
+                      setShowDeleteModal(true);
+                    }}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors duration-200 active:scale-95 touch-feedback border border-gray-200 bg-white shadow-sm ml-2"
+                    title="Delete contact"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    </svg>
+                  </button>
+                )}
               </div>
             ))
           )}

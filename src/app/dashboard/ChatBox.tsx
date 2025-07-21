@@ -209,131 +209,117 @@ export default function ChatBox({
     });
   }, []);
 
-  useEffect(() => {
-    if (!selfEmail) return;
-    let triedBackup = false;
-    let socket: WebSocket | null = null;
-    const primaryWS = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
-    const backupWS = process.env.NEXT_PUBLIC_WS_BACKUP_URL || "wss://ws-chat-server-production.up.railway.app/";
+  // Gemini API key and endpoint
+  const GOOGLE_AI_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY;
+  const GOOGLE_AI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-    function connectWebSocket(url: string) {
-      socket = new WebSocket(url);
-      socketRef.current = socket;
+  // Helper to check if this is the AI contact
+  const isAIContact = targetEmail === 'yourai@ai.local';
 
-      socket.onopen = () => {
-        setIsSocketConnected(true);
-        triedBackup = false;
-        // Send join message immediately after connection
-        socket.send(
-          JSON.stringify({
-            type: "join",
-            self: selfEmail,
-            target: targetEmail,
-          })
-        );
-      };
-
-      socket.onerror = () => {
-        setIsSocketConnected(false);
-        if (!triedBackup && url === primaryWS) {
-          triedBackup = true;
-          connectWebSocket(backupWS);
-        }
-      };
-
-      socket.onclose = () => {
-        setIsSocketConnected(false);
-      };
-
-      socket.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "chat") {
-          setMessages((prev) => {
-            const isDuplicate = prev.some((m) => {
-              if (m.file && msg.file) {
-                const timeDiff = Math.abs(new Date(m.createdAt || 0).getTime() - new Date(msg.createdAt || 0).getTime());
-                const isDuplicateFile = m.file.url === msg.file.url && m.from === msg.from && timeDiff < 2000;
-                if (isDuplicateFile) return true;
-              }
-              if (m.text && msg.text) {
-                const timeDiff = Math.abs(new Date(m.createdAt || 0).getTime() - new Date(msg.createdAt || 0).getTime());
-                const isDuplicateText = m.text === msg.text && m.from === msg.from && timeDiff < 2000;
-                if (isDuplicateText) return true;
-              }
-              return false;
-            });
-            if (isDuplicate) {
-              return prev;
-            }
-            const newMessages = [...prev, msg];
-            if (msg.from !== selfEmail && msg._id) {
-              sendStatusUpdate("delivered", msg._id);
-            }
-            return newMessages;
+  // Modified sendMessage for AI
+  const sendMessage = async (text?: string, fileObj?: { url: string; name: string; type: string; size?: number }) => {
+    if ((!text || !text.trim()) && !fileObj && !pendingFile) return;
+    setIsTyping(false);
+    if (pendingFile && !fileObj) {
+      setIsUploadingFile(true);
+      const formData = new FormData();
+      formData.append("file", pendingFile);
+      try {
+        const res = await axios.post(`${API_BASE_URL}/api/upload-file`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        const data = res.data as {
+          url?: string;
+          error?: string;
+          fileName?: string;
+          fileType?: string;
+          fileSize?: number;
+        };
+        if (data.url) {
+          sendMessage(text, {
+            url: data.url,
+            name: data.fileName || pendingFile.name,
+            type: data.fileType || pendingFile.type,
+            size: data.fileSize || pendingFile.size,
           });
+        } else {
+          toast.error("File upload failed: " + (data.error || "Unknown error"));
         }
-        if (msg.type === "history") {
-          setMessages(
-            msg.messages.filter((m: any) =>
-              !(Array.isArray(m.deletedFor) && selfEmail && m.deletedFor.includes(selfEmail))
-            )
-          );
-          msg.messages.forEach((m: any) => {
-            if (m.from !== selfEmail && m.status !== "delivered" && m.status !== "seen" && m._id) {
-              sendStatusUpdate("delivered", m._id);
-            }
-          });
-        }
-        if (msg.type === "contact_added") {
-          setContactNotification(msg.message);
-          setTimeout(() => setContactNotification(null), 3000);
-          if (onRefreshContacts) {
-            onRefreshContacts();
-          }
-        }
-        if (msg.type === "unknown_message") {
-          setContactNotification(`New message from ${msg.fromName || msg.from}`);
-          setTimeout(() => setContactNotification(null), 5000);
-          if (onUnknownMessage) {
-            onUnknownMessage();
-          }
-        }
-        if (msg.type === "status") {
-          if (msg.email === targetEmail) {
-            setContact((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    isOnline: msg.isOnline,
-                    lastSeen: msg.lastSeen ? new Date(msg.lastSeen) : prev.lastSeen,
-                  }
-                : prev
-            );
-          }
-        }
-        if (msg.type === "status_update") {
-          setMessages((prev) => prev.map((m: any) => (m._id === msg.messageId ? { ...m, status: msg.status } : m)));
-        }
-        // NEW: Handle delete for everyone
-        if (msg.type === "delete_for_everyone" && msg.messageId) {
-          setMessages((prev) => prev.filter((m: any) => m._id !== msg.messageId));
-        }
-        // NEW: Handle delete for me (real-time)
-        if (msg.type === "delete_for_me" && msg.messageId) {
-          setMessages((prev) => prev.filter((m: any) => m._id !== msg.messageId));
-        }
-      };
+      } catch (error) {
+        toast.error("File upload failed. Please try again.");
+      } finally {
+        setIsUploadingFile(false);
+        setPendingFile(null);
+        setPendingFilePreview(null);
+      }
+      return;
     }
 
-    connectWebSocket(primaryWS);
-
-    return () => {
-      setIsSocketConnected(false);
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
+    const msgObj: ChatMessage = {
+      from: selfEmailRef.current || "You",
+      text: text?.trim() || "",
     };
-  }, [targetEmail, onRefreshContacts, onUnknownMessage, selfEmail]);
+    if (fileObj) msgObj.file = fileObj;
+
+    setMessage("");
+    setPendingFile(null);
+    setPendingFilePreview(null);
+    setMessages((prev) => [...prev, msgObj]);
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+
+    // If AI contact, call Gemini API
+    if (isAIContact) {
+      if (!GOOGLE_AI_API_KEY) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            from: 'YouRAi',
+            text: 'AI API key is not set. Please contact the administrator.',
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        return;
+      }
+      try {
+        type GeminiResponse = { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+        const aiRes = await axios.post<GeminiResponse>(
+          GOOGLE_AI_API_URL,
+          {
+            contents: [{ parts: [{ text: msgObj.text }] }],
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-goog-api-key': GOOGLE_AI_API_KEY || '',
+            },
+          }
+        );
+        const aiText = aiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not generate a response.';
+        setMessages((prev) => [
+          ...prev,
+          {
+            from: 'YouRAi',
+            text: aiText,
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            from: 'YouRAi',
+            text: 'Sorry, there was an error connecting to the AI.',
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+      }
+      return;
+    }
+  }
 
   // Only auto-scroll if user is near the bottom or sends a message
   useEffect(() => {
@@ -523,82 +509,6 @@ export default function ChatBox({
     return fileName
   }
 
-  // Send message function (must be above usage)
-  const sendMessage = async (text?: string, fileObj?: { url: string; name: string; type: string; size?: number }) => {
-    if ((!text || !text.trim()) && !fileObj && !pendingFile) return
-
-    // Clear typing indicator
-    setIsTyping(false)
-
-    // If there is a pending file, upload it first
-    if (pendingFile && !fileObj) {
-      setIsUploadingFile(true)
-      const formData = new FormData()
-      formData.append("file", pendingFile)
-      try {
-        const res = await axios.post(`${API_BASE_URL}/api/upload-file`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        })
-        const data = res.data as {
-          url?: string
-          error?: string
-          fileName?: string
-          fileType?: string
-          fileSize?: number
-        }
-        if (data.url) {
-          // Send the message with the uploaded file
-          sendMessage(text, {
-            url: data.url,
-            name: data.fileName || pendingFile.name,
-            type: data.fileType || pendingFile.type,
-            size: data.fileSize || pendingFile.size,
-          })
-        } else {
-          toast.error("File upload failed: " + (data.error || "Unknown error"))
-        }
-      } catch (error) {
-        toast.error("File upload failed. Please try again.")
-      } finally {
-        setIsUploadingFile(false)
-        setPendingFile(null)
-        setPendingFilePreview(null)
-      }
-      return
-    }
-
-    const msgObj: ChatMessage = {
-      from: selfEmailRef.current || "You",
-      text: text?.trim() || "",
-    }
-    if (fileObj) msgObj.file = fileObj
-
-    const wsMsg: { type: string; text: string; file?: string } = { type: "chat", text: msgObj.text }
-    if (msgObj.file) {
-      wsMsg.file = JSON.stringify({
-        url: msgObj.file.url,
-        name: msgObj.file.name,
-        type: msgObj.file.type,
-        size: msgObj.file.size,
-      })
-    }
-
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify(wsMsg))
-    }
-
-    setMessage("")
-    setPendingFile(null)
-    setPendingFilePreview(null)
-
-    // Scroll to bottom after sending
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-    }, 100)
-  }
-
   // Helper for long press and tap (mobile)
   const handleTouchStart = (msgId: string) => {
     if (window.innerWidth >= 768) return // Only for mobile
@@ -735,6 +645,128 @@ export default function ChatBox({
     })
   }, [messages])
 
+  // Only connect WebSocket if not AI contact
+  useEffect(() => {
+    if (isAIContact) return;
+    if (!selfEmail) return;
+    let triedBackup = false;
+    let socket: WebSocket | null = null;
+    const primaryWS = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
+    const backupWS = process.env.NEXT_PUBLIC_WS_BACKUP_URL || "wss://ws-chat-server-production.up.railway.app/";
+    function connectWebSocket(url: string) {
+      socket = new WebSocket(url);
+      socketRef.current = socket;
+      socket.onopen = () => {
+        setIsSocketConnected(true);
+        triedBackup = false;
+        if (socket) {
+          socket.send(
+            JSON.stringify({
+              type: "join",
+              self: selfEmail,
+              target: targetEmail,
+            })
+          );
+        }
+      };
+      socket.onerror = () => {
+        setIsSocketConnected(false);
+        if (!triedBackup && url === primaryWS) {
+          triedBackup = true;
+          connectWebSocket(backupWS);
+        }
+      };
+      socket.onclose = () => {
+        setIsSocketConnected(false);
+      };
+      socket.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "chat") {
+          setMessages((prev) => {
+            const isDuplicate = prev.some((m) => {
+              if (m.file && msg.file) {
+                const timeDiff = Math.abs(new Date(m.createdAt || 0).getTime() - new Date(msg.createdAt || 0).getTime());
+                const isDuplicateFile = m.file.url === msg.file.url && m.from === msg.from && timeDiff < 2000;
+                if (isDuplicateFile) return true;
+              }
+              if (m.text && msg.text) {
+                const timeDiff = Math.abs(new Date(m.createdAt || 0).getTime() - new Date(msg.createdAt || 0).getTime());
+                const isDuplicateText = m.text === msg.text && m.from === msg.from && timeDiff < 2000;
+                if (isDuplicateText) return true;
+              }
+              return false;
+            });
+            if (isDuplicate) {
+              return prev;
+            }
+            const newMessages = [...prev, msg];
+            if (msg.from !== selfEmail && msg._id) {
+              sendStatusUpdate("delivered", msg._id);
+            }
+            return newMessages;
+          });
+        }
+        if (msg.type === "history") {
+          setMessages(
+            msg.messages.filter((m: any) =>
+              !(Array.isArray(m.deletedFor) && selfEmail && m.deletedFor.includes(selfEmail))
+            )
+          );
+          msg.messages.forEach((m: any) => {
+            if (m.from !== selfEmail && m.status !== "delivered" && m.status !== "seen" && m._id) {
+              sendStatusUpdate("delivered", m._id);
+            }
+          });
+        }
+        if (msg.type === "contact_added") {
+          setContactNotification(msg.message);
+          setTimeout(() => setContactNotification(null), 3000);
+          if (onRefreshContacts) {
+            onRefreshContacts();
+          }
+        }
+        if (msg.type === "unknown_message") {
+          setContactNotification(`New message from ${msg.fromName || msg.from}`);
+          setTimeout(() => setContactNotification(null), 5000);
+          if (onUnknownMessage) {
+            onUnknownMessage();
+          }
+        }
+        if (msg.type === "status") {
+          if (msg.email === targetEmail) {
+            setContact((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    isOnline: msg.isOnline,
+                    lastSeen: msg.lastSeen ? new Date(msg.lastSeen) : prev.lastSeen,
+                  }
+                : prev
+            );
+          }
+        }
+        if (msg.type === "status_update") {
+          setMessages((prev) => prev.map((m: any) => (m._id === msg.messageId ? { ...m, status: msg.status } : m)));
+        }
+        // NEW: Handle delete for everyone
+        if (msg.type === "delete_for_everyone" && msg.messageId) {
+          setMessages((prev) => prev.filter((m: any) => m._id !== msg.messageId));
+        }
+        // NEW: Handle delete for me (real-time)
+        if (msg.type === "delete_for_me" && msg.messageId) {
+          setMessages((prev) => prev.filter((m: any) => m._id !== msg.messageId));
+        }
+      };
+    }
+    connectWebSocket(primaryWS);
+    return () => {
+      setIsSocketConnected(false);
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+    };
+  }, [targetEmail, onRefreshContacts, onUnknownMessage, selfEmail, isAIContact]);
+
   // Helper to render ticks
   function renderTicks(status: string) {
     if (status === "seen") {
@@ -794,14 +826,21 @@ export default function ChatBox({
           )}
         </div>
         <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => setUserInfoOpen(true)}>
-          <p className="text-base sm:text-lg font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">
+          <p className="text-base sm:text-lg font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors flex items-center gap-2">
             {contact?.name || targetEmail}
+            {/* Server status indicator */}
+            <span
+              className={`inline-block w-2.5 h-2.5 rounded-full border border-white shadow-sm ml-1 ${isSocketConnected ? 'bg-green-500' : 'bg-red-500'}`}
+              title={isSocketConnected ? 'Server Connected' : 'Server Disconnected'}
+            />
           </p>
           <p className="text-xs sm:text-sm text-gray-500 truncate group-hover:text-blue-500 transition-colors">
             {targetEmail}
           </p>
           <p className="text-xs mt-0.5 sm:mt-1">
-            {contact?.isOnline ? (
+            {isAIContact ? (
+              <span className="text-green-600 font-medium">Online</span>
+            ) : contact?.isOnline ? (
               <span className="text-green-600 font-medium">Online</span>
             ) : contact?.lastSeen ? (
               <span className="text-gray-400">Last seen {formatLastSeen(contact.lastSeen)}</span>
@@ -961,7 +1000,20 @@ export default function ChatBox({
                             }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {isOwnMessage ? (
+                            {isAIContact ? (
+                              <button
+                                className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-50 text-red-600 rounded-lg"
+                                onClick={() => {
+                                  setShowDeleteModal(true)
+                                  setSelectedMsgForAction({ id: (msg as any)._id, text: msg.text, file: msg.file })
+                                  setDeleteType("me")
+                                  setActionMenuMsgId(null)
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                                <span>Delete for Me</span>
+                              </button>
+                            ) : isOwnMessage ? (
                               <>
                                 <button
                                   className="w-full flex items-center gap-2 px-4 py-2 hover:bg-blue-50 text-gray-800 rounded-t-lg disabled:opacity-50"
@@ -1104,7 +1156,16 @@ export default function ChatBox({
                         })()}
                       </span>
                     )}
-                    {isOwnMessage && <span className="ml-1 align-middle">{renderTicks((msg as any).status)}</span>}
+                    {/* For own messages in AI chat, always show blue tick */}
+                    {isOwnMessage && isAIContact && (
+                      <span className="ml-1 align-middle" title="Read by AI">
+                        <CheckCheck className="w-4 h-4 text-blue-500 inline align-middle" />
+                      </span>
+                    )}
+                    {/* For own messages in other chats, show normal ticks */}
+                    {isOwnMessage && !isAIContact && (
+                      <span className="ml-1 align-middle">{renderTicks((msg as any).status)}</span>
+                    )}
                   </div>
                 )
               })}
@@ -1153,7 +1214,7 @@ export default function ChatBox({
               onBlur={handleInputBlur}
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
-              disabled={!isSocketConnected || isUploadingFile}
+              disabled={(isAIContact ? false : !isSocketConnected) || isUploadingFile}
               style={{ minHeight: "44px" }}
             />
           </div>
@@ -1161,7 +1222,7 @@ export default function ChatBox({
           <button
             onClick={() => sendMessage(message)}
             className="p-2.5 sm:p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg active:scale-95"
-            disabled={!isSocketConnected || (!message.trim() && !pendingFile) || isUploadingFile}
+            disabled={((isAIContact ? false : !isSocketConnected) || (!message.trim() && !pendingFile) || isUploadingFile)}
           >
             <Send className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </button>

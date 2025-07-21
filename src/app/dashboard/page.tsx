@@ -65,7 +65,17 @@ export default function Page() {
     const fetchContacts = async () => {
       try {
         const response = await axios.get('/api/contacts');
-        setContacts((response.data as any).contacts || []);
+        let fetchedContacts = (response.data as any).contacts || [];
+        // Inject YouRAi contact at the top if not present
+        const aiContact = {
+          email: 'yourai@ai.local',
+          name: 'YouRAi',
+          image: null,
+          found: true
+        };
+        // Remove any duplicate
+        fetchedContacts = fetchedContacts.filter((c: any) => c.email !== aiContact.email);
+        setContacts([aiContact, ...fetchedContacts]);
       } catch (error) {
         console.error('Error fetching contacts:', error);
       }
