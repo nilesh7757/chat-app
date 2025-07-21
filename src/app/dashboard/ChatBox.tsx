@@ -344,7 +344,7 @@ export default function ChatBox({
       return
     }
     try {
-      const res = await axios.patch(`${API_BASE_URL}/api/messages/${msgId}`, { text: editingText }, { withCredentials: true })
+      const res = await axios.patch(`/api/messages/${msgId}`, { text: editingText }, { withCredentials: true })
       const resData = res.data as { success?: boolean; error?: string }
       if (resData && resData.success) {
         setMessages((prev) =>
@@ -393,7 +393,7 @@ export default function ChatBox({
       await new Promise((resolve) => setTimeout(resolve, 300)) // Wait for animation
       const session = await getSession()
       if (!session?.user?.email) return
-      let url = `${API_BASE_URL}/api/messages/` + msgId
+      let url = `/api/messages/${msgId}`
       if (everyone) {
         url += '?everyone=true'
       }
@@ -857,7 +857,7 @@ export default function ChatBox({
             if (!window.confirm("Are you sure you want to clear this chat? This will delete all messages for you (not for everyone).")) return;
             setIsClearingChat(true);
             try {
-              const res: any = await axios.delete(`${API_BASE_URL}/api/messages/clear?with=${encodeURIComponent(targetEmail)}`);
+              const res: any = await axios.delete(`/api/messages/clear?with=${encodeURIComponent(targetEmail)}`);
               const data: { success?: boolean; error?: string } = res.data;
               if (data && data.success) {
                 setMessages([]);
